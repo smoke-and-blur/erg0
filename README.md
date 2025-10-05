@@ -1,90 +1,154 @@
 ﻿# erg0 🌐
 
-A tiny, opt-in DOM micro-framework that plays nicely with your existing stack. Bring it in when you want expressive templating sugar, live bindings, and ergonomic events—leave it out when you don't. erg0 runs on vanilla browser APIs, slips into any framework, and stays server-rendering friendly.
+A lightweight DOM framework focused on composability and developer ergonomics. Build reactive UIs with tagged template literals and intelligent prop merging, using vanilla JavaScript and browser APIs.
 
-## ✨ Why you'll like it
-- 🧩 **Drop-in optionality** – sprinkle `erg0` helpers next to hand-written DOM without rewriting anything.
-- 🧪 **Pure vanilla compatibility** – zero build steps, zero globals beyond `erg0`, 100% plain JS.
-- 🔄 **State sync on demand** – call `notify()` to fan updates out to registered elements.
-- 🪄 **Template ergonomics** – `tags`, `props`, and `events` proxies give you JSX-like expressiveness without a compiler.
-- 🌍 **Server-first ready** – hydrate server-rendered markup by reusing IDs/classes, then attach listeners client-side.
-- 🤝 **Framework-friendly** – embed within React, Vue, Svelte, Astro, HTMX, or plain HTML; it's just DOM nodes.
+## ✨ Features
+- 🧩 **Composable** – Use alongside existing code without rewriting. Works with any framework or plain HTML.
+- 🧪 **Zero dependencies** – No build steps required. Just vanilla JavaScript.
+- 🔄 **Manual updates** – Call `notify()` when you need to update. No automatic diffing overhead.
+- 🪄 **Expressive syntax** – Tagged template literals and proxy-based helpers for clean, readable code.
+- 🌍 **Server-friendly** – Works with server-rendered markup. Attach events and reactivity client-side.
+- 🤝 **Framework agnostic** – Use with React, Vue, Svelte, Astro, HTMX, or standalone.
 
-## 🚀 Quick start
+## 🚀 Quick Start
 ```html
 <script src="erg0.js"></script>
 <script>
-    const { tags, props, events, reg } = erg0
-    const { div, button, span } = tags
-    const { className } = props
-    const { onclick } = events
+    const { tags, props, events, render } = erg0;
+    const { div, button, p } = tags;
+    const { className } = props;
+    const { onclick } = events;
 
-    let count = 0
+    let count = 0;
 
-    const counter = () => {
-        const label = span(`Clicked ${count} times`)
-        const update = () => label.textContent = `Clicked ${count} times`
-        return reg(div(
+    function App() {
+        return div(
             className`counter`,
-            label,
-            button(onclick(() => { count++; erg0.notify() }), "Bump")
-        ), update)
+            p(`Count: ${count}`),
+            button(onclick(() => count++), "Increment")
+        );
     }
 
-    document.querySelector('#app').append(counter())
+    render(App, document.getElementById('app'));
 </script>
 ```
 
-## 🧱 Optional building blocks
-- `erg0.tag(ns, name, ...args)` – create any element or SVG tag with strings, nodes, or prop objects.
-- `erg0.tags` – a Proxy that auto-generates tag helpers (`tags.div`, `tags.svg`, etc.).
-- `erg0.props` – template literal helpers for safe prop strings (`props.className`, `props.style`).
-- `erg0.events` – event factories that auto-call `notify()` (or skip it when you pass `false`).
-- `erg0.reg(el, update)` – register an element with its update function for manual invalidation.
-- `erg0.notify()` – flush pending element updates; prunes detached nodes so you stay leak-free.
+## 🧱 Core API
+- **`erg0.tags`** – Proxy that generates element builders (`div`, `button`, `svg`, etc.)
+- **`erg0.props`** – Tagged template helpers for props (`className`, `style`, `id`, etc.)
+- **`erg0.css`** – Tagged template helpers for CSS properties (`background`, `color`, `padding`, etc.)
+- **`erg0.events`** – Event handlers with automatic `notify()` calls (`onclick`, `oninput`, etc.)
+- **`erg0.render(component, parent)`** – Render a component function into a DOM element
+- **`erg0.notify(parent)`** – Manually trigger updates for rendered components
 
-Use the pieces you want. Ignore the rest. No bundler? No problem. Need TypeScript types? Add a `.d.ts`—the API surface is tiny.
+The API is minimal by design. Use what you need, ignore the rest.
 
-## 🔄 Smart Props Merging
-erg0 automatically merges `className` and `style` props when multiple prop objects are passed:
+## 🔄 Intelligent Prop Merging
+Multiple prop objects are automatically merged with smart handling for specific attributes:
 
+**className** – Combined and deduplicated
 ```javascript
-const baseStyles = { className: "box" };
-const theme = { className: "dark rounded" };
-const highlight = { className: "highlight" };
-
-// Classes are merged and deduplicated
-div(baseStyles, theme, highlight, "Text")
-// Result: <div class="box dark rounded highlight">Text</div>
-
-// Styles can be merged as strings or objects
 div(
-    { style: "color: blue; padding: 10px" },
-    { style: "background: white" },
-    { style: { color: "darkblue" } }, // Overrides color
-    "Styled text"
+    className("box"),
+    className("rounded"),
+    className("shadow"),
+    "Content"
+)
+// → <div class="box rounded shadow">Content</div>
+```
+
+**style** – Merged with later values overriding
+```javascript
+const { background, color, padding } = erg0.css;
+
+div(
+    style(background`#f0f0f0`, padding`20px`),
+    style(color`navy`),
+    "Styled content"
 )
 ```
 
-This makes it easy to compose reusable style patterns, conditional classes, and theme systems without manual concatenation. See `demo-merge-props/` for interactive examples.
+**dataset** – Data attributes merged into one object
+```javascript
+div(
+    dataset({ userId: "123" }),
+    dataset({ role: "admin" }),
+    "User info"
+)
+// → <div data-user-id="123" data-role="admin">User info</div>
+```
 
-## 🌐 Server rendering & hydration
-erg0 happily reuses server-rendered markup. Render your HTML on the server, serve it fast, then on the client:
-1. select existing nodes,
-2. attach events with `erg0.events`,
-3. register for updates only where you need reactivity.
+**Event handlers** – Chained in order
+```javascript
+button(
+    onclick(() => console.log("First"), false),
+    onclick(() => console.log("Second")),
+    "Click me"
+)
+// Both handlers execute when clicked
+```
 
-No diffing, no virtual DOM. You stay in control of when and how the DOM changes.
+**rel** – Combined for links
+```javascript
+a(
+    rel`noopener`,
+    rel`noreferrer`,
+    { href: "https://example.com" },
+    "Link"
+)
+// → <a rel="noopener noreferrer" href="...">Link</a>
+```
 
-## 🛠️ Plays well with others
-- **React/Vue/Svelte** – drop into lifecycle hooks to enhance parts of the tree.
-- **Astro/Eleventy/Nuxt** – let erg0 handle interactivity while the host handles HTML.
-- **HTMX/Alpine** – combine with progressive enhancement strategies.
-- **Vanilla JS** – of course. Everything is just `document.*` under the hood.
+See `demo-prop-merging/` for complete examples.
 
-## 📦 Shipping checklist
-- Serve `erg0.js` (or bundle it) wherever you need sprinkles of interactivity.
-- Call `erg0.notify()` only when state changes; skip automatic runtime overhead.
-- Clean up by removing the element—`notify()` auto-prunes disconnected nodes.
+## � Enhanced Syntax
+The new syntax provides cleaner ways to work with props:
 
-Ready to sprinkle some ergonomics on your DOM? Load `erg0.js`, borrow the helpers you like, and stay close to the platform.
+**Multiple class names**
+```javascript
+className("btn", "primary", "large")
+// Instead of: className`btn primary large`
+```
+
+**CSS properties with tagged templates**
+```javascript
+const { background, color, border } = erg0.css;
+
+style(
+    background`linear-gradient(...)`,
+    color`white`,
+    border`1px solid navy`
+)
+// Cleaner than: style`background: ...; color: white; border: ...`
+```
+
+Both old and new syntax work together. See `demo-new-syntax/` for examples.
+
+## 🌐 Server Rendering
+erg0 works with server-rendered HTML. Render on the server, then enhance client-side:
+
+1. Server sends static HTML
+2. Client selects existing elements
+3. Attach event handlers with `erg0.events`
+4. Use `render()` only where reactivity is needed
+
+No virtual DOM or automatic diffing. You control when updates happen.
+
+## 🛠️ Framework Integration
+- **React/Vue/Svelte** – Use in lifecycle hooks or for specific interactive components
+- **Astro/Eleventy/Next.js** – Handle interactivity while the framework manages routing
+- **HTMX/Alpine** – Combine with progressive enhancement patterns
+- **Vanilla JS** – Direct DOM manipulation with better ergonomics
+
+## 📦 Usage
+Include the script:
+```html
+<script src="erg0.js"></script>
+```
+
+Or import as a module:
+```javascript
+import { tags, props, events, render } from './erg0.js';
+```
+
+Call `notify()` when state changes to trigger updates. Removed elements are automatically cleaned up.
