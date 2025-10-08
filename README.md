@@ -22,14 +22,17 @@ render(App, '#root')
 </script>
 ```
 
-<details>
-  <summary>🧩 How to</summary>
+---
+
+### 🧩 How to
 
 **1️⃣ Import the library**
 
 ```html
 <script src="erg0.js"></script>
 ```
+
+---
 
 **2️⃣ Import the *producers***
 
@@ -46,6 +49,8 @@ const { id, className } = props
 const { color, background, display } = css
 ```
 
+---
+
 **3️⃣ Write the layout**
 
 `tags.*` accept strings, numbers, other `VNodes`, and *props* in any order.
@@ -60,6 +65,8 @@ function App() {
   )
 }
 ```
+
+---
 
 **4️⃣ Add attributes and styles**
 
@@ -87,20 +94,7 @@ style(
 )
 ```
 
-```js
-function App() {
-  return div(
-    h1('Counter'),
-    button(
-      id('btn'),
-      className('round'),
-      style(color`blue`),
-      '+'
-    ),
-    span(0)
-  )
-}
-```
+---
 
 **5️⃣ Assign event listeners and modify state**
 
@@ -143,6 +137,8 @@ function App() {
 }
 ```
 
+---
+
 **6️⃣ Render**
 
 `render` performs the first DOM render.
@@ -153,12 +149,11 @@ Subsequent DOM updates are handled automatically by event producers.
 render(App, '#root')
 ```
 
-</details>
+---
 
-<details>
-  <summary>🧠 VanillaJS vs erg0 DOM Manipulation</summary>
+### 🧠 Plain Browser API vs erg0 DOM Manipulation
 
-**Vanilla JS**
+**🥀 Plain Browser API**
 
 ```js
 const app = document.createElement('div')
@@ -183,7 +178,7 @@ app.appendChild(btn)
 document.querySelector('#root').appendChild(app)
 ```
 
-**erg0**
+**⚡ `erg0`**
 
 ```js
 const { tags, events, render } = erg0
@@ -200,4 +195,3 @@ function App() {
 
 render(App, '#root')
 ```
-</details>
