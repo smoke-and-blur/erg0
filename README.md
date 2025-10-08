@@ -22,6 +22,9 @@ render(App, '#root')
 </script>
 ```
 
+<details>
+  <summary>How to</summary>
+
 **1️⃣ Import the library**
 
 ```html
@@ -149,6 +152,8 @@ Subsequent DOM updates are handled automatically by event producers.
 ```js
 render(App, '#root')
 ```
+
+</details>
 
 ### 🧠 **VanillaJS vs erg0 DOM Manipulation**
 
