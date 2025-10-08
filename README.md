@@ -35,7 +35,7 @@ render(App, '#root')
 
 `erg0` provides `tags.*` and a few other *producers*.
 
-`tags.*` return `VNode`s and accept `props.*`, `events.*` and `style` returning *props* to modify its attributes.
+`tags.*` return `VNodes` and accept special objects (*props*) from `props.*`, `events.*` and `style`. These are used to modify `VNode's` attributes.
 
 `style` accepts `css.*` *producers*
 
@@ -48,7 +48,7 @@ const { color, background, display } = css
 
 **3️⃣ Write the layout**
 
-`tags.*` accept strings, numbers, other `VNode`s, and *props* in any order.
+`tags.*` accept strings, numbers, other `VNodes`, and *props* in any order.
 
 ```js
 // define our own App "component"
