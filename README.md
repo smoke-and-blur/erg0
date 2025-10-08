@@ -77,7 +77,7 @@ const { div, button, span, custom } = tags
 
 Similarly `attrs` are used to attach any attributes and `events` are used to attach any event listeners. Let's just call them *attrs* and *events*.
 
-*Tags* accept strings, numbers, other `VNodes`, *attrs* and *events* to modify the returned `VNode` properties (*props*).
+*Tags* accept strings, numbers, other `VNodes`, *attrs* and *events* (in any order) to modify the returned `VNode` properties (*props*).
 
 ```js
 const { id, className } = attrs
@@ -89,7 +89,10 @@ div(
 
 div(
     className`button`,
-    className`active`, // classNames are a special case: multiple classNames are concatenated
+    className`active`,
+    // classNames are a special case:
+    // multiple classNames are concatenated,
+    // all other props are overwritten
 )
 ```
 
@@ -129,6 +132,12 @@ onclick(e=>alert('hello'), !notify) // will not trigger DOM updates
 ## 🧠 Full Example
 
 ```js
+const { tags, attrs, events, css, style, render } = erg0
+const { div, h1, button, span } = tags
+const { id, className } = attrs
+const { onclick } = events
+const { color } = css
+
 let count = 0
 
 function App() {
@@ -138,12 +147,13 @@ function App() {
       id('btn'),
       className('round'),
       style(color`blue`),
-      onclick(e => count++), // triggers DOM updates efficiently
+      onclick(e => count++),
       '+'
     ),
     span(count)
   )
 }
+
 render(App, '#root')
 ```
 
