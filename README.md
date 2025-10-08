@@ -106,7 +106,9 @@ div(
 )
 ```
 
-The *events* update DOM automatically when they are triggered (using `notify` function internally). Provide a falsy value as a second argument to suppress DOM updates. Use `notify` to forcefully update DOM outside of any *events*. 🔁
+The *events* update DOM automatically when they are triggered (using `notify` function internally). Provide a falsy value as a second argument to suppress DOM updates.
+
+Or use `notify` to forcefully update DOM outside of any *events*. 🔁
 
 ```js
 onclick(e=>alert('hello'), false) // will not trigger DOM updates
