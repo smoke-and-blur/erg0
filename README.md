@@ -62,9 +62,10 @@ function App() {
 }
 ```
 
-**4️⃣ Add attributes and styles**
+
 
 <table>
+<th><td>4️⃣ Add attributes and styles</td></th>
 
 <tr><td>
 
@@ -96,7 +97,7 @@ style(
 )
 ```
 
-<td></tr>
+</td></tr>
 </table>
 
 **5️⃣ Assign event listeners and modify state**
