@@ -23,7 +23,7 @@ render(App, '#root')
 ```
 
 <details>
-  <summary>### 🧩 How to</summary>
+  <summary>🧩 How to</summary>
 
 **1️⃣ Import the library**
 
@@ -200,9 +200,3 @@ function App() {
 render(App, '#root')
 ```
 </details>
-
-### 🧩 **Projects using erg0**
-
-* **erg0-playground** — Interactive demo
-* **erg0-todo** — Minimal todo list
-* **erg0-clock** — Real-time updating clock
