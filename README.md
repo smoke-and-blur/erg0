@@ -1,5 +1,4 @@
-﻿`erg0` is a 
-**zero-build**, **browser-native** JavaScript framework<br>
+﻿⚡ `erg0` is a **zero-build**, **browser-native** JavaScript framework<br>
 to create complex DOM layouts that react to changes with ease.
 
 ```js
@@ -21,13 +20,13 @@ render(App, '#root')
 </script>
 ```
 
-**1. Import the library**
+<table><tr><th>📚</th><th>1. IMPORT THE LIBRARY</th></tr></table>
 
 ```html
 <script src="erg0.js"></script>
 ```
 
-**2. Import the *producers***
+<table><tr><th>🔌</th><th>2. IMPORT THE <b>PRODUCERS</b></th></tr></table>
 
 `erg0` provides `tags.*` and a few other *producers*.<br>
 `tags.*` return `VNodes` and accept special objects (*props*)<br>
@@ -42,7 +41,7 @@ const { id, className } = props
 const { color, background, display } = css
 ```
 
-**3. Write the layout**
+<table><tr><th>✏️</th><th>3. WRITE THE LAYOUT</th></tr></table>
 
 `tags.*` accept strings, numbers, other `VNodes`<br>
 and *props* in any order.
@@ -58,7 +57,7 @@ function App() {
 }
 ```
 
-**4. Add attributes and styles**
+<table><tr><th>🎨</th><th>4. ADD <b>PROPS</b></th></tr></table>
 
 `tags.*` concatenate multiple `className` *props*<br>
 and overwrite any other *props*.<br>
@@ -86,7 +85,7 @@ style(
 )
 ```
 
-**5️5. Assign event listeners and modify state**
+<table><tr><th>⚡</th><th>5. MODIFY STATE</th></tr></table>
 
 `events.*` attach event listeners and<br>
 make DOM updates happen when they are triggered.<br>
@@ -128,7 +127,7 @@ function App() {
 }
 ```
 
-**6. Render**
+<table><tr><th>✨</th><th>6. RENDER</th></tr></table>
 
 `render` performs the first DOM render.<br>
 Subsequent DOM updates are<br>
@@ -138,7 +137,7 @@ handled automatically by event producers.
 render(App, '#root')
 ```
 
-**🥀 Plain Browser API**
+<table><tr><th>🥀</th><th>Plain Browser API</th></tr></table>
 
 ```js
 const app = document.createElement('div')
@@ -163,7 +162,7 @@ app.appendChild(btn)
 document.querySelector('#root').appendChild(app)
 ```
 
-**⚡ `erg0`**
+<table><tr><th>⚡</th><th><code>erg0</code></th></tr></table>
 
 ```js
 const { tags, events, render } = erg0
