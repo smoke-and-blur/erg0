@@ -1,7 +1,8 @@
 ﻿# ⚡ **erg0** — The DOM Manipulation Framework
 
 `erg0` is a 
-**zero-build**, **browser-native** JavaScript framework to create complex DOM layouts that react to changes with ease.
+**zero-build**, **browser-native** JavaScript framework<br>
+to create complex DOM layouts that react to changes with ease.
 
 ```js
 <script src="erg0.js"></script>
@@ -30,8 +31,11 @@ render(App, '#root')
 
 **2️⃣ Import the *producers***
 
-> [!NOTE]
-> `erg0` provides `tags.*` and a few other *producers*. `tags.*` return `VNodes` and accept special objects (*props*) from `props.*`, `events.*` and `style`. These are used to modify `VNode's` attributes. `style` accepts `css.*` *producers*
+`erg0` provides `tags.*` and a few other *producers*.<br>
+`tags.*` return `VNodes` and accept special objects (*props*)<br>
+from `props.*`, `events.*` and `style`.<br>
+These are used to modify `VNode's` attributes.<br>
+`style` accepts `css.*` *producers*
 
 ```js
 const { tags, props, events, css, style, render, notify } = erg0
@@ -42,8 +46,8 @@ const { color, background, display } = css
 
 **3️⃣ Write the layout**
 
-> [!NOTE]
-> `tags.*` accept strings, numbers, other `VNodes`, and *props* in any order.
+`tags.*` accept strings, numbers, other `VNodes`<br>
+and *props* in any order.
 
 ```js
 // define our own App "component"
@@ -58,9 +62,9 @@ function App() {
 
 4️⃣ Add attributes and styles
 
-> [!NOTE]
-> `tags.*` concatenate multiple `className` *props* and overwrite any other *props*.
-> There are multiple types of syntax allowed for `props.*`. 
+`tags.*` concatenate multiple `className` *props*<br>
+and overwrite any other *props*.<br>
+There are multiple types of syntax allowed for `props.*`. 
 
 ```js
 const { id, className } = props
@@ -75,8 +79,7 @@ div(
 )
 ```
 
-> [!NOTE]
-> `style` is a *prop* producer accepting `css.*`.
+`style` is a *prop* producer accepting `css.*`.
 
 ```js
 style(
@@ -87,10 +90,11 @@ style(
 
 **5️⃣ Assign event listeners and modify state**
 
-> [!NOTE]
-> `events.*` attach event listeners and make DOM updates happen when they are triggered.
-> Provide a falsy value as a second argument to an `events.*` to suppress DOM updates.
-> Use `notify` to forcefully update DOM.
+`events.*` attach event listeners and<br>
+make DOM updates happen when they are triggered.<br>
+Provide a falsy value as a second argument<br>
+to an `events.*` function to suppress DOM updates.<br>
+Use `notify` to forcefully update DOM.
 
 ```js
 onclick(e=>alert('hello'), false) // will not trigger DOM updates
@@ -128,9 +132,9 @@ function App() {
 
 **6️⃣ Render**
 
-> [!NOTE]
-> `render` performs the first DOM render.
-> Subsequent DOM updates are handled automatically by event producers.
+`render` performs the first DOM render.<br>
+Subsequent DOM updates are<br>
+handled automatically by event producers.
 
 ```js
 render(App, '#root')
