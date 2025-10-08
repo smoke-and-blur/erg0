@@ -175,4 +175,7 @@ n = 10
 notify() // only the span DOM element is going to be updated
 ```
 
+![demo](https://github.com/user-attachments/assets/623dc3ce-a456-4363-b0f7-55f445861fd9)
+
+
 ✅ **Enjoy!** 🚀
