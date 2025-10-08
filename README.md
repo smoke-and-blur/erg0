@@ -65,7 +65,7 @@ function App() {
 
 
 <table>
-<th><td>4️⃣ Add attributes and styles</td></th>
+<tr><th>4️⃣ Add attributes and styles</th></tr>
 
 <tr><td>
 
