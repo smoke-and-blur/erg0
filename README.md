@@ -22,8 +22,6 @@ render(App, '#root')
 </script>
 ```
 
----
-
 **1️⃣ Import the library**
 
 ```html
@@ -32,11 +30,15 @@ render(App, '#root')
 
 **2️⃣ Import the *producers***
 
+<div style="max-width: 600px;">
+
 `erg0` provides `tags.*` and a few other *producers*.
 
 `tags.*` return `VNodes` and accept special objects (*props*) from `props.*`, `events.*` and `style`. These are used to modify `VNode's` attributes.
 
 `style` accepts `css.*` *producers*
+
+</div>
 
 ```js
 const { tags, props, events, css, style, render, notify } = erg0
@@ -136,8 +138,6 @@ Subsequent DOM updates are handled automatically by event producers.
 ```js
 render(App, '#root')
 ```
-
----
 
 **🥀 Plain Browser API**
 
