@@ -156,7 +156,7 @@ render(App, '#root')
 </details>
 
 <details>
-  <summary>🧠 **VanillaJS vs erg0 DOM Manipulation**</summary>
+  <summary>🧠 VanillaJS vs erg0 DOM Manipulation</summary>
 **Vanilla JS**
 
 ```js
