@@ -1,5 +1,8 @@
-﻿⚡ `erg0` is a **zero-build**, **browser-native** JavaScript framework<br>
-to create complex DOM layouts that react to changes with ease.
+﻿⚡ `erg0` is a **zero-build**, **browser-native** JavaScript framework to create complex DOM layouts that react to changes with ease. 🧠
+
+<table>
+<tr><th>`erg0`</th><th>Plain Browser API</th></tr>
+<tr><td>
 
 ```js
 <script src="erg0.js"></script>
@@ -20,78 +23,91 @@ render(App, '#root')
 </script>
 ```
 
-<table><tr><th>📚</th><th>1. IMPORT THE LIBRARY</th></tr></table>
+</td><td>
 
-```html
+```js
+<script>
+let n = 0;
+
+const container = document.createElement('div');
+
+const button = document.createElement('button');
+button.textContent = '+';
+
+const span = document.createElement('span');
+span.textContent = n;
+
+button.onclick = (e) => {
+  n++;
+  span.textContent = n;
+};
+
+container.appendChild(button);
+container.appendChild(span);
+
+document.getElementById('root').appendChild(container);
+</script>
+```
+
+</td></tr>
+</table>
+
+## 🧩 Internals
+
+Use `<script>` tag to import the library. It exposes `erg0` object in the global (`window`) scope. 🌍
+
+```js
 <script src="erg0.js"></script>
 ```
 
-<table><tr><th>🔌</th><th>2. IMPORT THE <b>PRODUCERS</b></th></tr></table>
-
-`erg0` provides `tags.*` and a few other *producers*.<br>
-`tags.*` return `VNodes` and accept special objects (*props*)<br>
-from `props.*`, `events.*` and `style`.<br>
-These are used to modify `VNode's` attributes.<br>
-`style` accepts `css.*` *producers*
+The `erg0` object provides `tags`, `attrs`, `events` and `css` proxies, `style`, `render` and `notify` functions. ⚙️
 
 ```js
-const { tags, props, events, css, style, render, notify } = erg0
-const { div, button, span, h1 } = tags
-const { id, className } = props
-const { color, background, display } = css
+const { tags, attrs, events, css, style, render, notify } = erg0
 ```
 
-<table><tr><th>✏️</th><th>3. WRITE THE LAYOUT</th></tr></table>
+The `tags` proxy allows access to the "factory" functions (like `div`, `button`, `span` etc) returning `VNodes` representing real DOM nodes. These functions do not exist upfront and are created on the fly whenever the user defines them.
 
-`tags.*` accept strings, numbers, other `VNodes`<br>
-and *props* in any order.
+This allows creating both existing HTML tags and custom ones. 🧱
 
 ```js
-// define our own App "component"
-function App() {
-  return div(
-    h1('Counter'),
-    button('+'),
-    span(0)
-  )
-}
+const { div, button, span, custom } = tags
 ```
 
-<table><tr><th>🎨</th><th>4. ADD <b>PROPS</b></th></tr></table>
+Let's call these factory functions just *tags* from now on.
 
-`tags.*` concatenate multiple `className` *props*<br>
-and overwrite any other *props*.<br>
-There are multiple types of syntax allowed for `props.*`. 
+Similarly `attrs` are used to attach any attributes and `events` are used to attach any event listeners. Let's just call them *attrs* and *events*.
+
+*Tags* accept strings, numbers, other `VNodes`, *attrs* and *events* to modify the returned `VNode` properties (*props*).
 
 ```js
-const { id, className } = props
+const { id, className } = attrs
 
-id`myID` // tag template version
-
-className('myID') // regular function version
+div(
+    id`myID`, // tag template syntax
+    className(`active`), // parenths syntax, both valid
+)
 
 div(
     className`button`,
-    className`active`, // classNames provided multiple times are concatenated
+    className`active`, // classNames are a special case: multiple classNames are concatenated
 )
 ```
 
-`style` is a *prop* producer accepting `css.*`.
+The `style` function (*style* from now on) is a special case. This is to make it accept objects produced by the `css` proxy factories (*styles*). 🎨
 
 ```js
-style(
-    color`blue`,
-    display`block`,
+const { color, display } = css
+
+div(
+    style(
+        color`red`,
+        display`flex`,
+    ),
 )
 ```
 
-<table><tr><th>⚡</th><th>5. MODIFY STATE</th></tr></table>
-
-`events.*` attach event listeners and<br>
-make DOM updates happen when they are triggered.<br>
-Provide a falsy value as a second argument<br>
-to an `events.*` function to suppress DOM updates.<br>
-Use `notify` to forcefully update DOM.
+The *events* update DOM automatically when they are triggered (using `notify` function). Provide a falsy value as a second argument to suppress DOM updates. Use `notify` to forcefully update DOM outside of any *events*. 🔁
 
 ```js
 onclick(e=>alert('hello'), false) // will not trigger DOM updates
@@ -103,11 +119,13 @@ setInterval(() => {
 ```
 
 > [!TIP]
-> A cool trick is to use `!notify` as a falsy value to make it more descriptive:
+> 💡 A cool trick is to use `!notify` as a falsy value to make it more descriptive:
 
 ```js
 onclick(e=>alert('hello'), !notify) // will not trigger DOM updates
 ```
+
+## 🧠 Full Example
 
 ```js
 let count = 0
@@ -119,63 +137,31 @@ function App() {
       id('btn'),
       className('round'),
       style(color`blue`),
-      onclick(e => count++), // triggers a DOM updates efficiently
+      onclick(e => count++), // triggers DOM updates efficiently
       '+'
     ),
     span(count)
   )
 }
-```
-
-<table><tr><th>✨</th><th>6. RENDER</th></tr></table>
-
-`render` performs the first DOM render.<br>
-Subsequent DOM updates are<br>
-handled automatically by event producers.
-
-```js
 render(App, '#root')
 ```
 
-<table><tr><th>🥀</th><th>Plain Browser API</th></tr></table>
+The `render` function performs the first DOM update. All the subsequent DOM updates are done by the `notify` function. The built-in diff algorithm ensures only changed VNodes trigger DOM updates, leaving unchanged nodes untouched. 🔍
 
 ```js
-const app = document.createElement('div')
-
-const header = document.createElement('h2')
-header.textContent = 'User List'
-app.appendChild(header)
-
-const list = document.createElement('ul')
-for (const name of ['Ada', 'Grace', 'Linus']) {
-  const li = document.createElement('li')
-  li.textContent = name
-  list.appendChild(li)
-}
-app.appendChild(list)
-
-const btn = document.createElement('button')
-btn.textContent = 'Add'
-btn.onclick = () => alert('clicked')
-app.appendChild(btn)
-
-document.querySelector('#root').appendChild(app)
-```
-
-<table><tr><th>⚡</th><th><code>erg0</code></th></tr></table>
-
-```js
-const { tags, events, render } = erg0
-const { div, h2, ul, li, button } = tags
-const { onclick } = events
+let n = 0
 
 function App() {
-  return div(
-    h2('User List'),
-    ul(['Ada', 'Grace', 'Linus'].map(name => li(name))),
-    button(onclick(() => alert('clicked')), 'Add')
-  )
+    return div('hello', span(n))
 }
 
 render(App, '#root')
+
+notify() // nothing is changed at all
+
+n = 10
+
+notify() // only the span DOM element is going to be updated
 ```
+
+✅ **Enjoy!** 🚀

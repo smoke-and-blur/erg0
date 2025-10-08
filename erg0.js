@@ -219,8 +219,7 @@
         };
     }
 
-    // Props creators
-    const propsProxy = new Proxy({}, {
+    const attrsProxy = new Proxy({}, {
         get(target, prop) {
             return (...values) => {
                 if (values.length === 0) return { [prop]: true };
@@ -335,7 +334,7 @@
     // No modules, no exports - browser only
     window.erg0 = {
         tags: tagsProxy,
-        props: propsProxy,
+        attrs: attrsProxy,
         events: eventsProxy,
         css: cssProxy,
         style: style,
