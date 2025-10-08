@@ -1,321 +1,345 @@
-(function (global) {
+// erg0 VDOM Framework - Vanilla Browser JS
+(function () {
+    // VNode class
     class VNode {
         constructor(tag, props = {}, children = []) {
             this.tag = tag;
             this.props = props;
-            this.children = children.flat();
-            this.el = null;
-        }
-
-        node() {
-            const el = document.createElement(this.tag);
-            this.el = el;
-
-            for (let [k, v] of Object.entries(this.props)) {
-                if (k.startsWith("on") && typeof v === "function") {
-                    el[k.toLowerCase()] = v;
-                    continue;
-                }
-                if (k === "className") {
-                    el.setAttribute("class", v);
-                    continue;
-                }
-                if (k === "style") {
-                    if (typeof v === "object") {
-                        Object.assign(el.style, v);
-                    } else {
-                        el.setAttribute("style", v);
-                    }
-                    continue;
-                }
-                if (v === true) {
-                    el.setAttribute(k, "");
-                    continue;
-                }
-                if (v !== false && v != null) {
-                    el[k] = v;
-                }
-            }
-
-            for (let c of this.children) {
-                if (c == null) continue;
-                el.appendChild(c.node());
-            }
-
-            return el;
+            this.children = Array.isArray(children) ? children : [children];
         }
     }
 
-    class TextVNode extends VNode {
-        constructor(text) {
-            super(null);
-            this.text = String(text);
+    // Global state
+    let renderFunction = null;
+    let currentVTree = null;
+    let rootElement = null;
+
+    // Diff and patch functions
+    function diffProps(oldProps, newProps, el) {
+        // Remove old props
+        for (const key in oldProps) {
+            if (!(key in newProps)) {
+                removeProp(el, key, oldProps[key]);
+            }
         }
-        node() {
-            this.el = document.createTextNode(this.text);
-            return this.el;
-        }
-    }
 
-    function patchChildren(parent, oldChildren, newChildren) {
-        const len = Math.max(oldChildren.length, newChildren.length);
+        // Update/add new props
+        for (const key in newProps) {
+            let isChanged;
 
-        for (let i = 0; i < len; i++) {
-            const oldC = oldChildren[i];
-            const newC = newChildren[i];
-
-            if (!oldC && newC) {
-                parent.appendChild(newC.node());
-                continue;
+            if (key === 'style') {
+                isChanged = JSON.stringify(oldProps[key]) !== JSON.stringify(newProps[key]);
+            } else if (key === 'className') {
+                // Direct string comparison - let updateProp handle the classList diff
+                isChanged = oldProps[key] !== newProps[key];
+            } else if (key.startsWith('on')) {
+                // Don't update event handlers if they're the same function reference
+                isChanged = oldProps[key] !== newProps[key];
+            } else {
+                isChanged = oldProps[key] !== newProps[key];
             }
 
-            if (oldC && !newC) {
-                parent.removeChild(oldC.el);
-                continue;
-            }
-
-            if (oldC instanceof TextVNode && newC instanceof TextVNode) {
-                if (oldC.text !== newC.text) {
-                    oldC.el.nodeValue = newC.text;
-                }
-                newC.el = oldC.el;
-                continue;
-            }
-
-            if (oldC instanceof VNode && newC instanceof VNode) {
-                patch(oldC, newC, parent);
+            if (isChanged) {
+                updateProp(el, key, newProps[key], oldProps[key]);
             }
         }
     }
 
-    function patch(oldVNode, newVNode, parent) {
+    function updateProp(el, key, value, oldValue) {
+        if (key === 'className') {
+            // Use classList for efficient class management
+            const oldClasses = oldValue ? oldValue.split(' ').filter(Boolean) : [];
+            const newClasses = value ? value.split(' ').filter(Boolean) : [];
+
+            // Create sets for efficient lookup
+            const oldSet = new Set(oldClasses);
+            const newSet = new Set(newClasses);
+
+            // Remove old classes not in new
+            oldClasses.forEach(cls => {
+                if (!newSet.has(cls)) {
+                    el.classList.remove(cls);
+                }
+            });
+
+            // Add new classes not in old
+            newClasses.forEach(cls => {
+                if (!oldSet.has(cls)) {
+                    el.classList.add(cls);
+                }
+            });
+        } else if (key === 'style' && typeof value === 'object') {
+            Object.assign(el.style, value);
+        } else if (key.startsWith('on')) {
+            const eventName = key.slice(2).toLowerCase();
+            if (oldValue) {
+                el.removeEventListener(eventName, oldValue);
+            }
+            el.addEventListener(eventName, value);
+        } else if (key in el && key !== 'list' && key !== 'form') {
+            el[key] = value;
+        } else {
+            el.setAttribute(key, value);
+        }
+    }
+
+    function removeProp(el, key, value) {
+        if (key === 'className') {
+            el.className = '';
+        } else if (key === 'style') {
+            el.removeAttribute('style');
+        } else if (key.startsWith('on')) {
+            const eventName = key.slice(2).toLowerCase();
+            if (value) {
+                el.removeEventListener(eventName, value);
+            }
+        } else if (key in el) {
+            el[key] = null;
+        } else {
+            el.removeAttribute(key);
+        }
+    }
+
+    function diff(oldVNode, newVNode, parentEl, index = 0) {
+        const el = parentEl.childNodes[index];
+
+        // Node doesn't exist - create it
+        if (!oldVNode) {
+            parentEl.appendChild(createElement(newVNode));
+            return;
+        }
+
+        // Node removed
+        if (!newVNode) {
+            parentEl.removeChild(el);
+            return;
+        }
+
+        // Text nodes
+        if (typeof oldVNode === 'string' || typeof oldVNode === 'number' ||
+            typeof newVNode === 'string' || typeof newVNode === 'number') {
+            if (oldVNode !== newVNode) {
+                const newNode = typeof newVNode === 'string' || typeof newVNode === 'number'
+                    ? document.createTextNode(String(newVNode))
+                    : createElement(newVNode);
+                parentEl.replaceChild(newNode, el);
+            }
+            return;
+        }
+
+        // Different tags - replace
         if (oldVNode.tag !== newVNode.tag) {
-            parent.replaceChild(newVNode.node(), oldVNode.el);
+            parentEl.replaceChild(createElement(newVNode), el);
             return;
         }
 
-        const el = (newVNode.el = oldVNode.el);
+        // Same tag - update props only
+        diffProps(oldVNode.props, newVNode.props, el);
 
+        // Diff children
+        const oldChildren = oldVNode.children || [];
+        const newChildren = newVNode.children || [];
+        const maxLen = Math.max(oldChildren.length, newChildren.length);
 
-        for (let k in oldVNode.props) {
-            if (!(k in newVNode.props)) {
-                if (k.startsWith("on")) {
-                    el[k.toLowerCase()] = null;
-                } else if (k === "className") {
-                    el.removeAttribute("class");
-                } else if (k === "style") {
-                    el.removeAttribute("style");
-                } else {
-                    el.removeAttribute(k);
-                }
-            }
+        for (let i = 0; i < maxLen; i++) {
+            diff(oldChildren[i], newChildren[i], el, i);
+        }
+    }
+
+    function createElement(vnode) {
+        if (typeof vnode === 'string' || typeof vnode === 'number') {
+            return document.createTextNode(String(vnode));
         }
 
+        const el = document.createElement(vnode.tag);
 
-        for (let [k, v] of Object.entries(newVNode.props)) {
-            if (k.startsWith("on") && typeof v === "function") {
-                if (oldVNode.props[k] !== v) {
-                    el[k.toLowerCase()] = v;
-                }
-                continue;
+        // Apply props
+        for (const key in vnode.props) {
+            updateProp(el, key, vnode.props[key]);
+        }
+
+        // Add children
+        (vnode.children || []).forEach(child => {
+            el.appendChild(createElement(child));
+        });
+
+        return el;
+    }
+
+    // Render function
+    function render(vnodeOrFunction, container) {
+        if (typeof container === 'string') {
+            container = document.querySelector(container);
+        }
+
+        if (!container) {
+            throw new Error('Container not found');
+        }
+
+        rootElement = container;
+
+        // Store the function or wrap vnode in a function
+        if (typeof vnodeOrFunction === 'function') {
+            renderFunction = vnodeOrFunction;
+        } else {
+            renderFunction = () => vnodeOrFunction;
+        }
+
+        const vnode = renderFunction();
+
+        if (!currentVTree) {
+            // Initial render
+            container.innerHTML = '';
+            container.appendChild(createElement(vnode));
+        } else {
+            // Update render
+            diff(currentVTree, vnode, container, 0);
+        }
+
+        currentVTree = vnode;
+    }
+
+    // Notify function to trigger re-render
+    function notify() {
+        if (renderFunction && rootElement) {
+            const newVTree = renderFunction();
+            diff(currentVTree, newVTree, rootElement, 0);
+            currentVTree = newVTree;
+        }
+    }
+
+    // Helper to wrap event handlers with auto-notify
+    function wrapEventHandler(handler, shouldNotify = true) {
+        return function (...args) {
+            const result = handler.apply(this, args);
+            if (shouldNotify !== false) {
+                notify();
             }
+            return result;
+        };
+    }
 
-            if (k === "className") {
-                if (oldVNode.props[k] !== v) {
-                    el.setAttribute("class", v);
-                }
-                continue;
-            }
-
-            if (k === "style") {
-                const oldStyle = oldVNode.props[k];
-                if (oldStyle !== v) {
-                    if (typeof v === "object") {
-                        // Clear old styles if type changed or update individual properties
-                        if (typeof oldStyle === "string") {
-                            el.setAttribute("style", "");
-                        }
-                        Object.assign(el.style, v);
-                    } else {
-                        el.setAttribute("style", v);
+    // Props creators
+    const propsProxy = new Proxy({}, {
+        get(target, prop) {
+            return (...values) => {
+                if (values.length === 0) return { [prop]: true };
+                if (values.length === 1) {
+                    // Handle tagged template
+                    if (Array.isArray(values[0]) && values[0].raw) {
+                        return { [prop]: values[0][0] };
                     }
+                    return { [prop]: values[0] };
                 }
-                continue;
-            }
-
-            if (v === true) {
-                el.setAttribute(k, "");
-            } else if (v === false || v == null) {
-                el.removeAttribute(k);
-            } else if (oldVNode.props[k] !== v) {
-                el[k] = v;
-            }
+                // Multiple values - join with space (for className)
+                return { [prop]: values.join(' ') };
+            };
         }
+    });
 
-        patchChildren(el, oldVNode.children, newVNode.children);
-    }
+    // Events creators
+    const eventsProxy = new Proxy({}, {
+        get(target, prop) {
+            if (!prop.startsWith('on')) return undefined;
 
-    function render(component, parent) {
-        const newVNode = component();
-
-        if (!parent._vnode) {
-            parent._vnode = newVNode;
-            parent._component = component;
-            parent.appendChild(newVNode.node());
-            return;
+            return (handler, autoNotify) => {
+                // Auto-notify is TRUE by default, only false if explicitly passed falsy
+                const shouldNotify = autoNotify !== false;
+                return { [prop]: wrapEventHandler(handler, shouldNotify) };
+            };
         }
+    });
 
-        patch(parent._vnode, newVNode, parent);
-        parent._vnode = newVNode;
-    }
-
-    function notify(parent = document.getElementById("app")) {
-        render(parent._component, parent);
-    }
-
-    function mergeProps(target, source) {
-        const result = { ...target };
-
-        for (const [key, value] of Object.entries(source)) {
-            // Merge className
-            if (key === "className" && target.className) {
-                const existingClasses = target.className.split(/\s+/).filter(Boolean);
-                const newClasses = value.split(/\s+/).filter(Boolean);
-                const allClasses = [...new Set([...existingClasses, ...newClasses])];
-                result.className = allClasses.join(" ");
-            }
-            // Merge style
-            else if (key === "style" && target.style) {
-                if (typeof target.style === "string" && typeof value === "string") {
-                    // Parse CSS strings and merge
-                    const existingStyles = target.style.split(";").filter(Boolean).map(s => s.trim());
-                    const newStyles = value.split(";").filter(Boolean).map(s => s.trim());
-                    const styleMap = {};
-
-                    [...existingStyles, ...newStyles].forEach(s => {
-                        const [prop, val] = s.split(":").map(x => x.trim());
-                        if (prop && val) styleMap[prop] = val;
-                    });
-
-                    result.style = Object.entries(styleMap).map(([k, v]) => `${k}: ${v}`).join("; ");
-                } else if (typeof target.style === "object" && typeof value === "object") {
-                    // Merge style objects
-                    result.style = { ...target.style, ...value };
-                } else {
-                    // If types don't match, newer value wins
-                    result[key] = value;
+    // CSS creators
+    const cssProxy = new Proxy({}, {
+        get(target, prop) {
+            return (strings, ...values) => {
+                // Handle tagged template
+                if (Array.isArray(strings) && strings.raw) {
+                    return { [prop]: strings[0] };
                 }
-            }
-            // Default behavior: newer value wins
-            else {
-                result[key] = value;
-            }
+                // Handle direct call
+                return { [prop]: strings };
+            };
         }
+    });
+
+    // Style function to combine multiple CSS properties
+    function style(...cssProps) {
+        const combined = {};
+        cssProps.forEach(prop => {
+            Object.assign(combined, prop);
+        });
+        return { style: combined };
+    }
+
+    // Helper to flatten arrays recursively
+    function flattenChildren(children) {
+        const result = [];
+
+        children.forEach(child => {
+            // Skip all falsy values (null, undefined, false, 0, '', NaN)
+            if (!child && child !== 0) return;
+
+            if (Array.isArray(child)) {
+                result.push(...flattenChildren(child));
+            } else {
+                result.push(child);
+            }
+        });
 
         return result;
     }
 
-    const tags = new Proxy({}, {
-        get(_, name) {
+    // Merge props intelligently
+    function mergeProps(target, source) {
+        for (const key in source) {
+            if (key === 'className' && target.className) {
+                // Merge classNames with space
+                target.className = target.className + ' ' + source.className;
+            } else if (key === 'style' && typeof target.style === 'object' && typeof source.style === 'object') {
+                // Merge style objects
+                target.style = { ...target.style, ...source.style };
+            } else {
+                // Regular assignment (later values override)
+                target[key] = source[key];
+            }
+        }
+    }
+
+    // Tags creator using Proxy
+    const tagsProxy = new Proxy({}, {
+        get(target, tag) {
             return (...args) => {
-                let props = {};
-                let children = [];
-                for (const a of args) {
-                    if (a == null) continue;
-                    if (
-                        typeof a === "object" &&
-                        !(a instanceof VNode) &&
-                        !(a instanceof Node) &&
-                        !Array.isArray(a)
-                    ) {
-                        props = mergeProps(props, a);
-                        continue;
+                const props = {};
+                const children = [];
+
+                args.forEach(arg => {
+                    if (arg === null || arg === undefined) return;
+
+                    if (typeof arg === 'object' && !Array.isArray(arg) && !(arg instanceof VNode)) {
+                        // It's a props object - merge instead of assign
+                        mergeProps(props, arg);
+                    } else {
+                        // It's a child (could be array)
+                        children.push(arg);
                     }
-                    if (typeof a === "string" || typeof a === "number") {
-                        children.push(new TextVNode(a));
-                        continue;
-                    }
-                    children.push(a);
-                }
-                return new VNode(name, props, children);
+                });
+
+                return new VNode(tag, props, flattenChildren(children));
             };
         }
     });
 
-    // Create tagged template functions for CSS properties
-    const cssTemplates = new Proxy({}, {
-        get(_, cssProp) {
-            return (strings, ...values) => {
-                const cssValue = String.raw({ raw: strings }, ...values);
-                return { cssProp, cssValue };
-            };
-        }
-    });
-
-    const props = new Proxy({}, {
-        get(_, key) {
-            return (...args) => {
-                // Handle special case for className with multiple string arguments
-                if (key === "className") {
-                    // If called with multiple string arguments: className("one", "two", "three")
-                    if (args.length > 0 && args.every(arg => typeof arg === "string")) {
-                        const classNames = args.filter(Boolean).join(" ");
-                        return { className: classNames };
-                    }
-                }
-
-                // Handle special case for style with multiple CSS template results
-                if (key === "style") {
-                    // Check if args are CSS template results
-                    if (args.length > 0 && args.every(arg => arg && typeof arg === "object" && "cssProp" in arg)) {
-                        const styleProps = {};
-                        for (const { cssProp, cssValue } of args) {
-                            // Convert kebab-case to camelCase
-                            const camelProp = cssProp.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
-                            styleProps[camelProp] = cssValue;
-                        }
-                        return { style: styleProps };
-                    }
-                }
-
-                // Original tagged template literal syntax
-                const [strings, ...values] = args;
-                if (typeof strings === "object" && strings.raw) {
-                    // Tagged template literal
-                    if (strings.length === 1 && strings[0] === "" && values.length === 0) {
-                        return { [key]: true };
-                    }
-                    const value = String.raw({ raw: strings }, ...values);
-                    return { [key]: value };
-                }
-
-                // Fallback for single string argument
-                if (args.length === 1 && typeof args[0] === "string") {
-                    return { [key]: args[0] };
-                }
-
-                // Empty call returns true
-                if (args.length === 0) {
-                    return { [key]: true };
-                }
-
-                return { [key]: args };
-            };
-        }
-    });
-
-    const events = new Proxy({}, {
-        get(_, key) {
-            if (!key.startsWith("on")) throw new Error("Events must start with 'on'");
-            return (fn, doNotify = true) => ({
-                [key]: (e) => {
-                    let r = fn(e);
-                    if (doNotify) notify();
-                    return r;
-                }
-            });
-        }
-    });
-
-    global.erg0 = { VNode, TextVNode, tags, props, events, render, notify, css: cssTemplates };
-})(typeof window !== "undefined" ? window : globalThis);
+    // Main erg0 object - expose to global window
+    // No modules, no exports - browser only
+    window.erg0 = {
+        tags: tagsProxy,
+        props: propsProxy,
+        events: eventsProxy,
+        css: cssProxy,
+        style: style,
+        render: render,
+        notify: notify
+    };
+})();

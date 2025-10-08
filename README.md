@@ -1,154 +1,202 @@
-﻿# erg0 🌐
+﻿# 🧩 **erg0** — The DOM Manipulation Framework
 
-A lightweight DOM framework focused on composability and developer ergonomics. Build reactive UIs with tagged template literals and intelligent prop merging, using vanilla JavaScript and browser APIs.
+`erg0` is a **zero-build**, **browser-native** JavaScript framework
+to create complex DOM layouts that react to changes with ease.
 
-## ✨ Features
-- 🧩 **Composable** – Use alongside existing code without rewriting. Works with any framework or plain HTML.
-- 🧪 **Zero dependencies** – No build steps required. Just vanilla JavaScript.
-- 🔄 **Manual updates** – Call `notify()` when you need to update. No automatic diffing overhead.
-- 🪄 **Expressive syntax** – Tagged template literals and proxy-based helpers for clean, readable code.
-- 🌍 **Server-friendly** – Works with server-rendered markup. Attach events and reactivity client-side.
-- 🤝 **Framework agnostic** – Use with React, Vue, Svelte, Astro, HTMX, or standalone.
-
-## 🚀 Quick Start
-```html
+```js
 <script src="erg0.js"></script>
 <script>
-    const { tags, props, events, render } = erg0;
-    const { div, button, p } = tags;
-    const { className } = props;
-    const { onclick } = events;
+const { tags, events, render } = erg0
+const { div, button, span } = tags
+const { onclick } = events
 
-    let count = 0;
+let n = 0
+function App() {
+  return div(
+    button(onclick(e => n++), '+'),
+    span(n)
+  )
+}
 
-    function App() {
-        return div(
-            className`counter`,
-            p(`Count: ${count}`),
-            button(onclick(() => count++), "Increment")
-        );
-    }
-
-    render(App, document.getElementById('app'));
+render(App, '#root')
 </script>
 ```
 
-## 🧱 Core API
-- **`erg0.tags`** – Proxy that generates element builders (`div`, `button`, `svg`, etc.)
-- **`erg0.props`** – Tagged template helpers for props (`className`, `style`, `id`, etc.)
-- **`erg0.css`** – Tagged template helpers for CSS properties (`background`, `color`, `padding`, etc.)
-- **`erg0.events`** – Event handlers with automatic `notify()` calls (`onclick`, `oninput`, etc.)
-- **`erg0.render(component, parent)`** – Render a component function into a DOM element
-- **`erg0.notify(parent)`** – Manually trigger updates for rendered components
+**1️⃣ Import the library**
 
-The API is minimal by design. Use what you need, ignore the rest.
-
-## 🔄 Intelligent Prop Merging
-Multiple prop objects are automatically merged with smart handling for specific attributes:
-
-**className** – Combined and deduplicated
-```javascript
-div(
-    className("box"),
-    className("rounded"),
-    className("shadow"),
-    "Content"
-)
-// → <div class="box rounded shadow">Content</div>
-```
-
-**style** – Merged with later values overriding
-```javascript
-const { background, color, padding } = erg0.css;
-
-div(
-    style(background`#f0f0f0`, padding`20px`),
-    style(color`navy`),
-    "Styled content"
-)
-```
-
-**dataset** – Data attributes merged into one object
-```javascript
-div(
-    dataset({ userId: "123" }),
-    dataset({ role: "admin" }),
-    "User info"
-)
-// → <div data-user-id="123" data-role="admin">User info</div>
-```
-
-**Event handlers** – Chained in order
-```javascript
-button(
-    onclick(() => console.log("First"), false),
-    onclick(() => console.log("Second")),
-    "Click me"
-)
-// Both handlers execute when clicked
-```
-
-**rel** – Combined for links
-```javascript
-a(
-    rel`noopener`,
-    rel`noreferrer`,
-    { href: "https://example.com" },
-    "Link"
-)
-// → <a rel="noopener noreferrer" href="...">Link</a>
-```
-
-See `demo-prop-merging/` for complete examples.
-
-## � Enhanced Syntax
-The new syntax provides cleaner ways to work with props:
-
-**Multiple class names**
-```javascript
-className("btn", "primary", "large")
-// Instead of: className`btn primary large`
-```
-
-**CSS properties with tagged templates**
-```javascript
-const { background, color, border } = erg0.css;
-
-style(
-    background`linear-gradient(...)`,
-    color`white`,
-    border`1px solid navy`
-)
-// Cleaner than: style`background: ...; color: white; border: ...`
-```
-
-Both old and new syntax work together. See `demo-new-syntax/` for examples.
-
-## 🌐 Server Rendering
-erg0 works with server-rendered HTML. Render on the server, then enhance client-side:
-
-1. Server sends static HTML
-2. Client selects existing elements
-3. Attach event handlers with `erg0.events`
-4. Use `render()` only where reactivity is needed
-
-No virtual DOM or automatic diffing. You control when updates happen.
-
-## 🛠️ Framework Integration
-- **React/Vue/Svelte** – Use in lifecycle hooks or for specific interactive components
-- **Astro/Eleventy/Next.js** – Handle interactivity while the framework manages routing
-- **HTMX/Alpine** – Combine with progressive enhancement patterns
-- **Vanilla JS** – Direct DOM manipulation with better ergonomics
-
-## 📦 Usage
-Include the script:
 ```html
 <script src="erg0.js"></script>
 ```
 
-Or import as a module:
-```javascript
-import { tags, props, events, render } from './erg0.js';
+**2️⃣ Import the *producers***
+
+`erg0` provides `tags.*` and a few other *producers*.
+
+`tags.*` return `VNode`s and accept `props.*`, `events.*` and `style` returning *props* to modify its attributes.
+
+`style` accepts `css.*` *producers*
+
+```js
+const { tags, props, events, css, style, render, notify } = erg0
+const { div, button, span, h1 } = tags
+const { id, className } = props
+const { color, background, display } = css
 ```
 
-Call `notify()` when state changes to trigger updates. Removed elements are automatically cleaned up.
+**3️⃣ Write the layout**
+
+`tags.*` accept strings, numbers, other `VNode`s, and *props* in any order.
+
+```js
+// define our own App "component"
+function App() {
+  return div(
+    h1('Counter'),
+    button('+'),
+    span(0)
+  )
+}
+```
+
+**4️⃣ Add attributes and styles**
+
+`tags.*` concatenate multiple `className` *props* and overwrite any other *props*. There are multiple types of syntax allowed for `props.*`. 
+
+```js
+const { id, className } = props
+
+id`myID` // tag template version
+
+className('myID') // regular function version
+
+div(
+  className`button`,
+  className`active`, // classNames provided multiple times are concatenated
+)
+```
+
+`style` is a *prop* producer accepting `css.*`.
+
+```js
+style(
+    color`blue`,
+    display`block`,
+)
+```
+
+```js
+function App() {
+  return div(
+    h1('Counter'),
+    button(
+      id('btn'),
+      className('round'),
+      style(color`blue`),
+      '+'
+    ),
+    span(0)
+  )
+}
+```
+
+**5️⃣ Assign event listeners and modify state**
+
+`events.*` attach event listeners and make DOM updates happen when they are triggered.
+
+Provide a falsy value as a second argument to an `events.*` to suppress DOM updates.
+
+Use `notify` to forcefully update DOM.
+
+```js
+onclick(e=>alert('hello'), false) // will not trigger DOM updates
+
+setInterval(() => {
+  count++
+  notify() // will trigger DOM updates
+}, 1000)
+```
+
+A cool trick is to use `!notify` as a falsy value to make it more descriptive:
+
+```js
+onclick(e=>alert('hello'), !notify) // will not trigger DOM updates
+```
+
+```js
+let count = 0
+
+function App() {
+  return div(
+    h1('Counter'),
+    button(
+      id('btn'),
+      className('round'),
+      style(color`blue`),
+      onclick(e => count++), // triggers a DOM updates efficiently
+      '+'
+    ),
+    span(count)
+  )
+}
+```
+
+**6️⃣ Render**
+
+`render` performs the first DOM render.
+
+Subsequent DOM updates are handled automatically by event producers.
+
+```js
+render(App, '#root')
+```
+
+### 🧠 **VanillaJS vs erg0 DOM Manipulation**
+
+**Vanilla JS**
+
+```js
+const app = document.createElement('div')
+
+const header = document.createElement('h2')
+header.textContent = 'User List'
+app.appendChild(header)
+
+const list = document.createElement('ul')
+for (const name of ['Ada', 'Grace', 'Linus']) {
+  const li = document.createElement('li')
+  li.textContent = name
+  list.appendChild(li)
+}
+app.appendChild(list)
+
+const btn = document.createElement('button')
+btn.textContent = 'Add'
+btn.onclick = () => alert('clicked')
+app.appendChild(btn)
+
+document.querySelector('#root').appendChild(app)
+```
+
+**erg0**
+
+```js
+const { tags, events, render } = erg0
+const { div, h2, ul, li, button } = tags
+const { onclick } = events
+
+function App() {
+  return div(
+    h2('User List'),
+    ul(['Ada', 'Grace', 'Linus'].map(name => li(name))),
+    button(onclick(() => alert('clicked')), 'Add')
+  )
+}
+
+render(App, '#root')
+```
+
+### 🧩 **Projects using erg0**
+
+* **erg0-playground** — Interactive demo
+* **erg0-todo** — Minimal todo list
+* **erg0-clock** — Real-time updating clock
