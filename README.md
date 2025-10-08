@@ -30,11 +30,8 @@ render(App, '#root')
 
 **2️⃣ Import the *producers***
 
-- `erg0` provides `tags.*` and a few other *producers*.
-
-- `tags.*` return `VNodes` and accept special objects (*props*) from `props.*`, `events.*` and `style`. These are used to modify `VNode's` attributes.
-
-- `style` accepts `css.*` *producers*
+> [!NOTE]
+> `erg0` provides `tags.*` and a few other *producers*. `tags.*` return `VNodes` and accept special objects (*props*) from `props.*`, `events.*` and `style`. These are used to modify `VNode's` attributes. `style` accepts `css.*` *producers*
 
 ```js
 const { tags, props, events, css, style, render, notify } = erg0
@@ -45,7 +42,8 @@ const { color, background, display } = css
 
 **3️⃣ Write the layout**
 
-- `tags.*` accept strings, numbers, other `VNodes`, and *props* in any order.
+> [!NOTE]
+> `tags.*` accept strings, numbers, other `VNodes`, and *props* in any order.
 
 ```js
 // define our own App "component"
@@ -60,9 +58,9 @@ function App() {
 
 4️⃣ Add attributes and styles
 
-- `tags.*` concatenate multiple `className` *props* and overwrite any other *props*.
-
-- There are multiple types of syntax allowed for `props.*`. 
+> [!NOTE]
+> `tags.*` concatenate multiple `className` *props* and overwrite any other *props*.
+> There are multiple types of syntax allowed for `props.*`. 
 
 ```js
 const { id, className } = props
@@ -77,7 +75,8 @@ div(
 )
 ```
 
-- `style` is a *prop* producer accepting `css.*`.
+> [!NOTE]
+> `style` is a *prop* producer accepting `css.*`.
 
 ```js
 style(
@@ -88,11 +87,10 @@ style(
 
 **5️⃣ Assign event listeners and modify state**
 
-- `events.*` attach event listeners and make DOM updates happen when they are triggered.
-
-- Provide a falsy value as a second argument to an `events.*` to suppress DOM updates.
-
-- Use `notify` to forcefully update DOM.
+> [!NOTE]
+> `events.*` attach event listeners and make DOM updates happen when they are triggered.
+> Provide a falsy value as a second argument to an `events.*` to suppress DOM updates.
+> Use `notify` to forcefully update DOM.
 
 ```js
 onclick(e=>alert('hello'), false) // will not trigger DOM updates
@@ -103,7 +101,8 @@ setInterval(() => {
 }, 1000)
 ```
 
-- A cool trick is to use `!notify` as a falsy value to make it more descriptive:
+> [!TIP]
+> A cool trick is to use `!notify` as a falsy value to make it more descriptive:
 
 ```js
 onclick(e=>alert('hello'), !notify) // will not trigger DOM updates
@@ -129,9 +128,9 @@ function App() {
 
 **6️⃣ Render**
 
-- `render` performs the first DOM render.
-
-- Subsequent DOM updates are handled automatically by event producers.
+> [!NOTE]
+> `render` performs the first DOM render.
+> Subsequent DOM updates are handled automatically by event producers.
 
 ```js
 render(App, '#root')
