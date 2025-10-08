@@ -1,4 +1,4 @@
-﻿# 🧩 **erg0** — The DOM Manipulation Framework
+﻿# ⚡ **erg0** — The DOM Manipulation Framework
 
 `erg0` is a **zero-build**, **browser-native** JavaScript framework
 to create complex DOM layouts that react to changes with ease.
