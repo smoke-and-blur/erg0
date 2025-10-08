@@ -23,7 +23,7 @@ render(App, '#root')
 ```
 
 <details>
-  <summary>How to</summary>
+  <summary>### 🧩 How to</summary>
 
 **1️⃣ Import the library**
 
@@ -155,8 +155,8 @@ render(App, '#root')
 
 </details>
 
-### 🧠 **VanillaJS vs erg0 DOM Manipulation**
-
+<details>
+  <summary>🧠 **VanillaJS vs erg0 DOM Manipulation**</summary>
 **Vanilla JS**
 
 ```js
@@ -199,6 +199,7 @@ function App() {
 
 render(App, '#root')
 ```
+</details>
 
 ### 🧩 **Projects using erg0**
 
