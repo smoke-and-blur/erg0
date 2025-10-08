@@ -66,15 +66,14 @@ The `erg0` object provides `tags`, `attrs`, `events` and `css` proxies, `style`,
 const { tags, attrs, events, css, style, render, notify } = erg0
 ```
 
-The `tags` proxy allows access to the "factory" functions (like `div`, `button`, `span` etc) returning "virtual" `VNodes` representing "real" DOM nodes. These functions do not exist upfront and are created on the fly whenever the user defines them.
+The `tags` proxy allows access to the "factory" functions (like `div`, `button`, `span` etc) returning "virtual" `VNodes` representing "real" DOM nodes. Let's call these factory functions just *tags* from now on.
 
-This allows creating both existing HTML tags and custom ones. 🧱
+These functions do not exist upfront and are created on the fly whenever the user defines them. This allows creating both existing HTML *tags* and custom ones. 🧱
 
 ```js
 const { div, button, span, custom } = tags
 ```
 
-Let's call these factory functions just *tags* from now on.
 
 Similarly `attrs` are used to attach any attributes and `events` are used to attach any event listeners. Let's just call them *attrs* and *events*.
 
