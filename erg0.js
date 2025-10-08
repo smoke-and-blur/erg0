@@ -103,46 +103,75 @@
     function diff(oldVNode, newVNode, parentEl, index = 0) {
         const el = parentEl.childNodes[index];
 
-        // Node doesn't exist - create it
-        if (!oldVNode) {
-            parentEl.appendChild(createElement(newVNode));
+        // Node doesn't exist - create it (but 0 is a valid value!)
+        if (oldVNode === null || oldVNode === undefined) {
+            if (newVNode !== null && newVNode !== undefined) {
+                parentEl.appendChild(createElement(newVNode));
+            }
             return;
         }
 
-        // Node removed
-        if (!newVNode) {
-            parentEl.removeChild(el);
+        // Node removed (but 0 is a valid value!)
+        if (newVNode === null || newVNode === undefined) {
+            if (el) {
+                parentEl.removeChild(el);
+            }
             return;
         }
 
         // Text nodes
         if (typeof oldVNode === 'string' || typeof oldVNode === 'number' ||
             typeof newVNode === 'string' || typeof newVNode === 'number') {
-            if (oldVNode !== newVNode) {
-                const newNode = typeof newVNode === 'string' || typeof newVNode === 'number'
+
+            // Both are text-like
+            if ((typeof oldVNode === 'string' || typeof oldVNode === 'number') &&
+                (typeof newVNode === 'string' || typeof newVNode === 'number')) {
+                if (oldVNode !== newVNode && el) {
+                    if (el.nodeType === 3) {
+                        // It's a text node, just update it
+                        el.textContent = String(newVNode);
+                    } else {
+                        // Not a text node, replace it
+                        parentEl.replaceChild(document.createTextNode(String(newVNode)), el);
+                    }
+                }
+                return;
+            }
+
+            // One is text, one is element - replace
+            if (el) {
+                const newNode = (typeof newVNode === 'string' || typeof newVNode === 'number')
                     ? document.createTextNode(String(newVNode))
                     : createElement(newVNode);
                 parentEl.replaceChild(newNode, el);
+            } else {
+                parentEl.appendChild(createElement(newVNode));
             }
             return;
         }
 
         // Different tags - replace
         if (oldVNode.tag !== newVNode.tag) {
-            parentEl.replaceChild(createElement(newVNode), el);
+            if (el) {
+                parentEl.replaceChild(createElement(newVNode), el);
+            } else {
+                parentEl.appendChild(createElement(newVNode));
+            }
             return;
         }
 
-        // Same tag - update props only
-        diffProps(oldVNode.props, newVNode.props, el);
+        // Same tag - update props and diff children
+        if (el) {
+            diffProps(oldVNode.props, newVNode.props, el);
 
-        // Diff children
-        const oldChildren = oldVNode.children || [];
-        const newChildren = newVNode.children || [];
-        const maxLen = Math.max(oldChildren.length, newChildren.length);
+            // Diff children
+            const oldChildren = oldVNode.children || [];
+            const newChildren = newVNode.children || [];
+            const maxLen = Math.max(oldChildren.length, newChildren.length);
 
-        for (let i = 0; i < maxLen; i++) {
-            diff(oldChildren[i], newChildren[i], el, i);
+            for (let i = 0; i < maxLen; i++) {
+                diff(oldChildren[i], newChildren[i], el, i);
+            }
         }
     }
 
@@ -272,20 +301,27 @@
         return { style: combined };
     }
 
-    // Helper to flatten arrays recursively
+    // Helper to flatten arrays recursively - ONLY filter null, undefined, false, empty string
+    // Keep everything else including 0
     function flattenChildren(children) {
         const result = [];
 
-        children.forEach(child => {
-            // Skip all falsy values (null, undefined, false, 0, '', NaN)
-            if (child === null || child === undefined || child === false || child === '') return;
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+
+            // Explicitly skip ONLY these falsy values
+            if (child === null || child === undefined || child === false || child === '') {
+                continue;
+            }
 
             if (Array.isArray(child)) {
+                // Recursively flatten
                 result.push(...flattenChildren(child));
             } else {
+                // Keep everything else (including 0, strings, numbers, VNodes)
                 result.push(child);
             }
-        });
+        }
 
         return result;
     }
