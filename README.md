@@ -1,6 +1,4 @@
-﻿# ⚡ **erg0** — The DOM Manipulation Framework
-
-`erg0` is a 
+﻿`erg0` is a 
 **zero-build**, **browser-native** JavaScript framework<br>
 to create complex DOM layouts that react to changes with ease.
 
@@ -23,13 +21,13 @@ render(App, '#root')
 </script>
 ```
 
-**1️⃣ Import the library**
+**1. Import the library**
 
 ```html
 <script src="erg0.js"></script>
 ```
 
-**2️⃣ Import the *producers***
+**2. Import the *producers***
 
 `erg0` provides `tags.*` and a few other *producers*.<br>
 `tags.*` return `VNodes` and accept special objects (*props*)<br>
@@ -44,7 +42,7 @@ const { id, className } = props
 const { color, background, display } = css
 ```
 
-**3️⃣ Write the layout**
+**3. Write the layout**
 
 `tags.*` accept strings, numbers, other `VNodes`<br>
 and *props* in any order.
@@ -60,7 +58,7 @@ function App() {
 }
 ```
 
-4️⃣ Add attributes and styles
+**4. Add attributes and styles**
 
 `tags.*` concatenate multiple `className` *props*<br>
 and overwrite any other *props*.<br>
@@ -88,7 +86,7 @@ style(
 )
 ```
 
-**5️⃣ Assign event listeners and modify state**
+**5️5. Assign event listeners and modify state**
 
 `events.*` attach event listeners and<br>
 make DOM updates happen when they are triggered.<br>
@@ -130,7 +128,7 @@ function App() {
 }
 ```
 
-**6️⃣ Render**
+**6. Render**
 
 `render` performs the first DOM render.<br>
 Subsequent DOM updates are<br>
