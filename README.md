@@ -64,7 +64,15 @@ function App() {
 
 **4️⃣ Add attributes and styles**
 
+<table>
+
+<tr><td>
+
 `tags.*` concatenate multiple `className` *props* and overwrite any other *props*. There are multiple types of syntax allowed for `props.*`. 
+
+</td></tr>
+
+<tr><td>
 
 ```js
 const { id, className } = props
@@ -74,7 +82,7 @@ id`myID` // tag template version
 className('myID') // regular function version
 
 div(
-  className`button`,
+    className`button`,
   className`active`, // classNames provided multiple times are concatenated
 )
 ```
@@ -87,6 +95,9 @@ style(
     display`block`,
 )
 ```
+
+<td></tr>
+</table>
 
 **5️⃣ Assign event listeners and modify state**
 
