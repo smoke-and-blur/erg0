@@ -4,7 +4,7 @@
 <tr><th>`erg0`</th><th>Plain Browser API</th></tr>
 <tr><td>
 
-```js
+```html
 <script src="erg0.js"></script>
 <script>
 const { tags, events, render } = erg0
@@ -25,7 +25,7 @@ render(App, '#root')
 
 </td><td>
 
-```js
+```html
 <script>
 let n = 0;
 
