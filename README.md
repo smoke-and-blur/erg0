@@ -1,7 +1,7 @@
 ﻿# ⚡ **erg0** — The DOM Manipulation Framework
 
-`erg0` is a **zero-build**, **browser-native** JavaScript framework
-to create complex DOM layouts that react to changes with ease.
+`erg0` is a 
+**zero-build**, **browser-native** JavaScript framework to create complex DOM layouts that react to changes with ease.
 
 ```js
 <script src="erg0.js"></script>
@@ -30,15 +30,11 @@ render(App, '#root')
 
 **2️⃣ Import the *producers***
 
-<div style="max-width: 600px;">
+- `erg0` provides `tags.*` and a few other *producers*.
 
-`erg0` provides `tags.*` and a few other *producers*.
+- `tags.*` return `VNodes` and accept special objects (*props*) from `props.*`, `events.*` and `style`. These are used to modify `VNode's` attributes.
 
-`tags.*` return `VNodes` and accept special objects (*props*) from `props.*`, `events.*` and `style`. These are used to modify `VNode's` attributes.
-
-`style` accepts `css.*` *producers*
-
-</div>
+- `style` accepts `css.*` *producers*
 
 ```js
 const { tags, props, events, css, style, render, notify } = erg0
@@ -49,7 +45,7 @@ const { color, background, display } = css
 
 **3️⃣ Write the layout**
 
-`tags.*` accept strings, numbers, other `VNodes`, and *props* in any order.
+- `tags.*` accept strings, numbers, other `VNodes`, and *props* in any order.
 
 ```js
 // define our own App "component"
@@ -62,18 +58,11 @@ function App() {
 }
 ```
 
+4️⃣ Add attributes and styles
 
+- `tags.*` concatenate multiple `className` *props* and overwrite any other *props*.
 
-<table>
-<tr><th>4️⃣ Add attributes and styles</th></tr>
-
-<tr><td>
-
-`tags.*` concatenate multiple `className` *props* and overwrite any other *props*. There are multiple types of syntax allowed for `props.*`. 
-
-</td></tr>
-
-<tr><td>
+- There are multiple types of syntax allowed for `props.*`. 
 
 ```js
 const { id, className } = props
@@ -84,11 +73,11 @@ className('myID') // regular function version
 
 div(
     className`button`,
-  className`active`, // classNames provided multiple times are concatenated
+    className`active`, // classNames provided multiple times are concatenated
 )
 ```
 
-`style` is a *prop* producer accepting `css.*`.
+- `style` is a *prop* producer accepting `css.*`.
 
 ```js
 style(
@@ -97,16 +86,13 @@ style(
 )
 ```
 
-</td></tr>
-</table>
-
 **5️⃣ Assign event listeners and modify state**
 
-`events.*` attach event listeners and make DOM updates happen when they are triggered.
+- `events.*` attach event listeners and make DOM updates happen when they are triggered.
 
-Provide a falsy value as a second argument to an `events.*` to suppress DOM updates.
+- Provide a falsy value as a second argument to an `events.*` to suppress DOM updates.
 
-Use `notify` to forcefully update DOM.
+- Use `notify` to forcefully update DOM.
 
 ```js
 onclick(e=>alert('hello'), false) // will not trigger DOM updates
@@ -117,7 +103,7 @@ setInterval(() => {
 }, 1000)
 ```
 
-A cool trick is to use `!notify` as a falsy value to make it more descriptive:
+- A cool trick is to use `!notify` as a falsy value to make it more descriptive:
 
 ```js
 onclick(e=>alert('hello'), !notify) // will not trigger DOM updates
@@ -143,9 +129,9 @@ function App() {
 
 **6️⃣ Render**
 
-`render` performs the first DOM render.
+- `render` performs the first DOM render.
 
-Subsequent DOM updates are handled automatically by event producers.
+- Subsequent DOM updates are handled automatically by event producers.
 
 ```js
 render(App, '#root')
