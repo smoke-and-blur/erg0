@@ -278,7 +278,7 @@
 
         children.forEach(child => {
             // Skip all falsy values (null, undefined, false, 0, '', NaN)
-            if (!child && child !== 0) return;
+            if (child === null || child === undefined || child === false || child === '') return;
 
             if (Array.isArray(child)) {
                 result.push(...flattenChildren(child));
