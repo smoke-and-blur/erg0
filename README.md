@@ -24,15 +24,11 @@ render(App, '#root')
 
 ---
 
-### 🧩 How to
-
 **1️⃣ Import the library**
 
 ```html
 <script src="erg0.js"></script>
 ```
-
----
 
 **2️⃣ Import the *producers***
 
@@ -49,8 +45,6 @@ const { id, className } = props
 const { color, background, display } = css
 ```
 
----
-
 **3️⃣ Write the layout**
 
 `tags.*` accept strings, numbers, other `VNodes`, and *props* in any order.
@@ -65,8 +59,6 @@ function App() {
   )
 }
 ```
-
----
 
 **4️⃣ Add attributes and styles**
 
@@ -93,8 +85,6 @@ style(
     display`block`,
 )
 ```
-
----
 
 **5️⃣ Assign event listeners and modify state**
 
@@ -137,8 +127,6 @@ function App() {
 }
 ```
 
----
-
 **6️⃣ Render**
 
 `render` performs the first DOM render.
@@ -150,8 +138,6 @@ render(App, '#root')
 ```
 
 ---
-
-### 🧠 Plain Browser API vs erg0 DOM Manipulation
 
 **🥀 Plain Browser API**
 
