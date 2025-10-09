@@ -5,7 +5,58 @@
         constructor(tag, props = {}, children = []) {
             this.tag = tag;
             this.props = props;
-            this.children = Array.isArray(children) ? children : [children];
+            this.children = flattenChildren(Array.isArray(children) ? children : [children]);
+            this.el = null;
+        }
+
+        node() {
+            const el = document.createElement(this.tag);
+            this.el = el;
+
+            for (let [k, v] of Object.entries(this.props)) {
+                if (k.startsWith("on") && typeof v === "function") {
+                    const eventName = k.slice(2).toLowerCase();
+                    el.addEventListener(eventName, v);
+                    continue;
+                }
+                if (k === "className") {
+                    el.setAttribute("class", v);
+                    continue;
+                }
+                if (k === "style" && typeof v === "object") {
+                    Object.assign(el.style, v);
+                    continue;
+                }
+                if (v === true) {
+                    el.setAttribute(k, "");
+                    continue;
+                }
+                if (v !== false && v != null) {
+                    if (k in el && k !== 'list' && k !== 'form') {
+                        el[k] = v;
+                    } else {
+                        el.setAttribute(k, v);
+                    }
+                }
+            }
+
+            for (let c of this.children) {
+                if (c == null) continue;
+                el.appendChild(c.node());
+            }
+
+            return el;
+        }
+    }
+
+    class TextVNode extends VNode {
+        constructor(text) {
+            super(null);
+            this.text = String(text);
+        }
+        node() {
+            this.el = document.createTextNode(this.text);
+            return this.el;
         }
     }
 
@@ -14,185 +65,125 @@
     let currentVTree = null;
     let rootElement = null;
 
-    // Diff and patch functions
-    function diffProps(oldProps, newProps, el) {
-        // Remove old props
-        for (const key in oldProps) {
-            if (!(key in newProps)) {
-                removeProp(el, key, oldProps[key]);
+    // Helper to flatten arrays recursively
+    function flattenChildren(children) {
+        const result = [];
+
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+
+            if (child === null || child === undefined || child === false || child === '') {
+                continue;
             }
-        }
 
-        // Update/add new props
-        for (const key in newProps) {
-            let isChanged;
-
-            if (key === 'style') {
-                isChanged = JSON.stringify(oldProps[key]) !== JSON.stringify(newProps[key]);
-            } else if (key === 'className') {
-                // Direct string comparison - let updateProp handle the classList diff
-                isChanged = oldProps[key] !== newProps[key];
-            } else if (key.startsWith('on')) {
-                // Don't update event handlers if they're the same function reference
-                isChanged = oldProps[key] !== newProps[key];
+            if (Array.isArray(child)) {
+                result.push(...flattenChildren(child));
+            } else if (typeof child === 'string' || typeof child === 'number') {
+                result.push(new TextVNode(child));
             } else {
-                isChanged = oldProps[key] !== newProps[key];
+                result.push(child);
+            }
+        }
+
+        return result;
+    }
+
+    function patchChildren(parent, oldChildren, newChildren) {
+        const len = Math.max(oldChildren.length, newChildren.length);
+
+        for (let i = 0; i < len; i++) {
+            const oldC = oldChildren[i];
+            const newC = newChildren[i];
+
+            if (!oldC && newC) {
+                parent.appendChild(newC.node());
+                continue;
             }
 
-            if (isChanged) {
-                updateProp(el, key, newProps[key], oldProps[key]);
+            if (oldC && !newC) {
+                parent.removeChild(oldC.el);
+                continue;
+            }
+
+            if (oldC instanceof TextVNode && newC instanceof TextVNode) {
+                if (oldC.text !== newC.text) {
+                    oldC.el.nodeValue = newC.text;
+                }
+                newC.el = oldC.el;
+                continue;
+            }
+
+            if (oldC instanceof VNode && newC instanceof VNode) {
+                patch(oldC, newC, parent);
             }
         }
     }
 
-    function updateProp(el, key, value, oldValue) {
-        if (key === 'className') {
-            // Use classList for efficient class management
-            const oldClasses = oldValue ? oldValue.split(' ').filter(Boolean) : [];
-            const newClasses = value ? value.split(' ').filter(Boolean) : [];
-
-            // Create sets for efficient lookup
-            const oldSet = new Set(oldClasses);
-            const newSet = new Set(newClasses);
-
-            // Remove old classes not in new
-            oldClasses.forEach(cls => {
-                if (!newSet.has(cls)) {
-                    el.classList.remove(cls);
-                }
-            });
-
-            // Add new classes not in old
-            newClasses.forEach(cls => {
-                if (!oldSet.has(cls)) {
-                    el.classList.add(cls);
-                }
-            });
-        } else if (key === 'style' && typeof value === 'object') {
-            Object.assign(el.style, value);
-        } else if (key.startsWith('on')) {
-            const eventName = key.slice(2).toLowerCase();
-            if (oldValue) {
-                el.removeEventListener(eventName, oldValue);
-            }
-            el.addEventListener(eventName, value);
-        } else if (key in el && key !== 'list' && key !== 'form') {
-            el[key] = value;
-        } else {
-            el.setAttribute(key, value);
-        }
-    }
-
-    function removeProp(el, key, value) {
-        if (key === 'className') {
-            el.className = '';
-        } else if (key === 'style') {
-            el.removeAttribute('style');
-        } else if (key.startsWith('on')) {
-            const eventName = key.slice(2).toLowerCase();
-            if (value) {
-                el.removeEventListener(eventName, value);
-            }
-        } else if (key in el) {
-            el[key] = null;
-        } else {
-            el.removeAttribute(key);
-        }
-    }
-
-    function diff(oldVNode, newVNode, parentEl, index = 0) {
-        const el = parentEl.childNodes[index];
-
-        // Node doesn't exist - create it (but 0 is a valid value!)
-        if (oldVNode === null || oldVNode === undefined) {
-            if (newVNode !== null && newVNode !== undefined) {
-                parentEl.appendChild(createElement(newVNode));
-            }
-            return;
-        }
-
-        // Node removed (but 0 is a valid value!)
-        if (newVNode === null || newVNode === undefined) {
-            if (el) {
-                parentEl.removeChild(el);
-            }
-            return;
-        }
-
-        // Text nodes
-        if (typeof oldVNode === 'string' || typeof oldVNode === 'number' ||
-            typeof newVNode === 'string' || typeof newVNode === 'number') {
-
-            // Both are text-like
-            if ((typeof oldVNode === 'string' || typeof oldVNode === 'number') &&
-                (typeof newVNode === 'string' || typeof newVNode === 'number')) {
-                if (oldVNode !== newVNode && el) {
-                    if (el.nodeType === 3) {
-                        // It's a text node, just update it
-                        el.textContent = String(newVNode);
-                    } else {
-                        // Not a text node, replace it
-                        parentEl.replaceChild(document.createTextNode(String(newVNode)), el);
-                    }
-                }
-                return;
-            }
-
-            // One is text, one is element - replace
-            if (el) {
-                const newNode = (typeof newVNode === 'string' || typeof newVNode === 'number')
-                    ? document.createTextNode(String(newVNode))
-                    : createElement(newVNode);
-                parentEl.replaceChild(newNode, el);
-            } else {
-                parentEl.appendChild(createElement(newVNode));
-            }
-            return;
-        }
-
-        // Different tags - replace
+    function patch(oldVNode, newVNode, parent) {
         if (oldVNode.tag !== newVNode.tag) {
-            if (el) {
-                parentEl.replaceChild(createElement(newVNode), el);
-            } else {
-                parentEl.appendChild(createElement(newVNode));
-            }
+            parent.replaceChild(newVNode.node(), oldVNode.el);
             return;
         }
 
-        // Same tag - update props and diff children
-        if (el) {
-            diffProps(oldVNode.props, newVNode.props, el);
+        const el = (newVNode.el = oldVNode.el);
 
-            // Diff children
-            const oldChildren = oldVNode.children || [];
-            const newChildren = newVNode.children || [];
-            const maxLen = Math.max(oldChildren.length, newChildren.length);
-
-            for (let i = 0; i < maxLen; i++) {
-                diff(oldChildren[i], newChildren[i], el, i);
+        // Remove old props
+        for (let k in oldVNode.props) {
+            if (!(k in newVNode.props)) {
+                if (k.startsWith("on")) {
+                    const eventName = k.slice(2).toLowerCase();
+                    el.removeEventListener(eventName, oldVNode.props[k]);
+                } else if (k === "className") {
+                    el.removeAttribute("class");
+                } else if (k === "style") {
+                    el.removeAttribute("style");
+                } else {
+                    el.removeAttribute(k);
+                }
             }
         }
-    }
 
-    function createElement(vnode) {
-        if (typeof vnode === 'string' || typeof vnode === 'number') {
-            return document.createTextNode(String(vnode));
+        // Update props
+        for (let [k, v] of Object.entries(newVNode.props)) {
+            if (k.startsWith("on") && typeof v === "function") {
+                if (oldVNode.props[k] !== v) {
+                    const eventName = k.slice(2).toLowerCase();
+                    if (oldVNode.props[k]) {
+                        el.removeEventListener(eventName, oldVNode.props[k]);
+                    }
+                    el.addEventListener(eventName, v);
+                }
+                continue;
+            }
+
+            if (k === "className") {
+                if (oldVNode.props[k] !== v) {
+                    el.setAttribute("class", v);
+                }
+                continue;
+            }
+
+            if (k === "style" && typeof v === "object") {
+                if (JSON.stringify(oldVNode.props[k]) !== JSON.stringify(v)) {
+                    Object.assign(el.style, v);
+                }
+                continue;
+            }
+
+            if (v === true) {
+                el.setAttribute(k, "");
+            } else if (v === false || v == null) {
+                el.removeAttribute(k);
+            } else if (oldVNode.props[k] !== v) {
+                if (k in el && k !== 'list' && k !== 'form') {
+                    el[k] = v;
+                } else {
+                    el.setAttribute(k, v);
+                }
+            }
         }
 
-        const el = document.createElement(vnode.tag);
-
-        // Apply props
-        for (const key in vnode.props) {
-            updateProp(el, key, vnode.props[key]);
-        }
-
-        // Add children
-        (vnode.children || []).forEach(child => {
-            el.appendChild(createElement(child));
-        });
-
-        return el;
+        patchChildren(el, oldVNode.children, newVNode.children);
     }
 
     // Render function
@@ -207,7 +198,6 @@
 
         rootElement = container;
 
-        // Store the function or wrap vnode in a function
         if (typeof vnodeOrFunction === 'function') {
             renderFunction = vnodeOrFunction;
         } else {
@@ -217,12 +207,10 @@
         const vnode = renderFunction();
 
         if (!currentVTree) {
-            // Initial render
             container.innerHTML = '';
-            container.appendChild(createElement(vnode));
+            container.appendChild(vnode.node());
         } else {
-            // Update render
-            diff(currentVTree, vnode, container, 0);
+            patch(currentVTree, vnode, container);
         }
 
         currentVTree = vnode;
@@ -232,7 +220,7 @@
     function notify() {
         if (renderFunction && rootElement) {
             const newVTree = renderFunction();
-            diff(currentVTree, newVTree, rootElement, 0);
+            patch(currentVTree, newVTree, rootElement);
             currentVTree = newVTree;
         }
     }
@@ -253,13 +241,11 @@
             return (...values) => {
                 if (values.length === 0) return { [prop]: true };
                 if (values.length === 1) {
-                    // Handle tagged template
                     if (Array.isArray(values[0]) && values[0].raw) {
                         return { [prop]: values[0][0] };
                     }
                     return { [prop]: values[0] };
                 }
-                // Multiple values - join with space (for className)
                 return { [prop]: values.join(' ') };
             };
         }
@@ -271,7 +257,6 @@
             if (!prop.startsWith('on')) return undefined;
 
             return (handler, autoNotify) => {
-                // Auto-notify is TRUE by default, only false if explicitly passed falsy
                 const shouldNotify = autoNotify !== false;
                 return { [prop]: wrapEventHandler(handler, shouldNotify) };
             };
@@ -282,11 +267,9 @@
     const cssProxy = new Proxy({}, {
         get(target, prop) {
             return (strings, ...values) => {
-                // Handle tagged template
                 if (Array.isArray(strings) && strings.raw) {
                     return { [prop]: strings[0] };
                 }
-                // Handle direct call
                 return { [prop]: strings };
             };
         }
@@ -301,42 +284,14 @@
         return { style: combined };
     }
 
-    // Helper to flatten arrays recursively - ONLY filter null, undefined, false, empty string
-    // Keep everything else including 0
-    function flattenChildren(children) {
-        const result = [];
-
-        for (let i = 0; i < children.length; i++) {
-            const child = children[i];
-
-            // Explicitly skip ONLY these falsy values
-            if (child === null || child === undefined || child === false || child === '') {
-                continue;
-            }
-
-            if (Array.isArray(child)) {
-                // Recursively flatten
-                result.push(...flattenChildren(child));
-            } else {
-                // Keep everything else (including 0, strings, numbers, VNodes)
-                result.push(child);
-            }
-        }
-
-        return result;
-    }
-
     // Merge props intelligently
     function mergeProps(target, source) {
         for (const key in source) {
             if (key === 'className' && target.className) {
-                // Merge classNames with space
                 target.className = target.className + ' ' + source.className;
             } else if (key === 'style' && typeof target.style === 'object' && typeof source.style === 'object') {
-                // Merge style objects
                 target.style = { ...target.style, ...source.style };
             } else {
-                // Regular assignment (later values override)
                 target[key] = source[key];
             }
         }
@@ -352,23 +307,21 @@
                 args.forEach(arg => {
                     if (arg === null || arg === undefined) return;
 
-                    if (typeof arg === 'object' && !Array.isArray(arg) && !(arg instanceof VNode)) {
-                        // It's a props object - merge instead of assign
+                    if (typeof arg === 'object' && !Array.isArray(arg) && !(arg instanceof VNode) && !(arg instanceof TextVNode)) {
                         mergeProps(props, arg);
                     } else {
-                        // It's a child (could be array)
                         children.push(arg);
                     }
                 });
 
-                return new VNode(tag, props, flattenChildren(children));
+                return new VNode(tag, props, children);
             };
         }
     });
 
-    // Main erg0 object - expose to global window
-    // No modules, no exports - browser only
     window.erg0 = {
+        VNode,
+        TextVNode,
         tags: tagsProxy,
         attrs: attrsProxy,
         events: eventsProxy,
