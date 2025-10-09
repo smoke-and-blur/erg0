@@ -65,27 +65,11 @@
     let currentVTree = null;
     let rootElement = null;
 
-    // Helper to flatten arrays recursively
     function flattenChildren(children) {
-        const result = [];
-
-        for (let i = 0; i < children.length; i++) {
-            const child = children[i];
-
-            if (child === null || child === undefined || child === false || child === '') {
-                continue;
-            }
-
-            if (Array.isArray(child)) {
-                result.push(...flattenChildren(child));
-            } else if (typeof child === 'string' || typeof child === 'number') {
-                result.push(new TextVNode(child));
-            } else {
-                result.push(child);
-            }
-        }
-
-        return result;
+        return children
+            .flat(Infinity) // fully flatten nested arrays
+            .filter(child => child || child === 0) // skip falsy except 0
+            .map(child => ['string', 'number'].includes(typeof child) ? new TextVNode(child) : child);
     }
 
     function patchChildren(parent, oldChildren, newChildren) {
