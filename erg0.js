@@ -1,317 +1,254 @@
-// erg0 VDOM Framework - Vanilla Browser JS
-(function () {
-    // VNode class
-    class VNode {
-        constructor(tag, props = {}, children = []) {
-            this.tag = tag;
-            this.props = props;
-            this.children = flattenChildren(Array.isArray(children) ? children : [children]);
-            this.el = null;
-        }
-
-        node() {
-            const el = document.createElement(this.tag);
-            this.el = el;
-
-            for (let [k, v] of Object.entries(this.props)) {
-                if (k.startsWith("on") && typeof v === "function") {
-                    const eventName = k.slice(2).toLowerCase();
-                    el.addEventListener(eventName, v);
-                    continue;
-                }
-                if (k === "className") {
-                    el.setAttribute("class", v);
-                    continue;
-                }
-                if (k === "style" && typeof v === "object") {
-                    Object.assign(el.style, v);
-                    continue;
-                }
-                if (v === true) {
-                    el.setAttribute(k, "");
-                    continue;
-                }
-                if (v !== false && v != null) {
-                    if (k in el && k !== 'list' && k !== 'form') {
-                        el[k] = v;
-                    } else {
-                        el.setAttribute(k, v);
-                    }
-                }
-            }
-
-            for (let c of this.children) {
-                if (c == null) continue;
-                el.appendChild(c.node());
-            }
-
-            return el;
-        }
+class VNode {
+    constructor(tag, handlers = {}, attrs = {}, ...children) {
+        this.tag = tag;
+        this.attrs = attrs;
+        this.handlers = handlers;
+        this.children = flatten(children);
+        this.el = null;
+        this._boundHandlers = {};
+        this._notify = null;
+        this._autoNotifyMap = {};
     }
+}
 
-    class TextVNode extends VNode {
-        constructor(text) {
-            super(null);
-            this.text = String(text);
-        }
-        node() {
-            this.el = document.createTextNode(this.text);
-            return this.el;
-        }
+class VText {
+    constructor(text) {
+        this.text = String(text);
+        this.el = null;
     }
+}
 
-    // Global state
-    let renderFunction = null;
-    let currentVTree = null;
-    let rootElement = null;
-
-    function flattenChildren(children) {
-        return children
-            .flat(Infinity) // fully flatten nested arrays
-            .filter(child => child || child === 0) // skip falsy except 0
-            .map(child => ['string', 'number'].includes(typeof child) ? new TextVNode(child) : child);
+class Attr {
+    constructor(key, value) {
+        this.key = key;
+        this.value = value;
     }
+}
 
-    function patchChildren(parent, oldChildren, newChildren) {
-        const len = Math.max(oldChildren.length, newChildren.length);
-
-        for (let i = 0; i < len; i++) {
-            const oldC = oldChildren[i];
-            const newC = newChildren[i];
-
-            if (!oldC && newC) {
-                parent.appendChild(newC.node());
-                continue;
-            }
-
-            if (oldC && !newC) {
-                parent.removeChild(oldC.el);
-                continue;
-            }
-
-            if (oldC instanceof TextVNode && newC instanceof TextVNode) {
-                if (oldC.text !== newC.text) {
-                    oldC.el.nodeValue = newC.text;
-                }
-                newC.el = oldC.el;
-                continue;
-            }
-
-            if (oldC instanceof VNode && newC instanceof VNode) {
-                patch(oldC, newC, parent);
-            }
-        }
+class Handler {
+    constructor(event, fn, autoNotify = true) {
+        this.event = event;
+        this.fn = fn;
+        this.autoNotify = autoNotify;
     }
+}
 
-    function patch(oldVNode, newVNode, parent) {
-        if (oldVNode.tag !== newVNode.tag) {
-            parent.replaceChild(newVNode.node(), oldVNode.el);
-            return;
+function flatten(children) {
+    return children.flat(Infinity)
+        .filter(c => c || c === 0)
+        .map(c => (typeof c === "string" || typeof c === "number") ? new VText(c) : c);
+}
+
+function normalize(strings, values) {
+    return strings.reduce((acc, s, i) => acc + s + (values[i] ?? ""), "").trim();
+}
+
+const attrs = new Proxy({}, {
+    get: (_, key) => (strings, ...values) => {
+        const text = normalize(strings, values);
+        return new Attr(key, text || true);
+    }
+});
+
+const handlers = new Proxy({}, {
+    get: (_, key) => {
+        if (!key.startsWith("on")) {
+            throw new Error(`Event must start with 'on', e.g. onclick`);
         }
+        const event = key.slice(2);
+        return (fn, autoNotify = true) => new Handler(event, fn, autoNotify);
+    }
+});
 
-        const el = (newVNode.el = oldVNode.el);
+const tags = new Proxy({}, {
+    get: (_, tag) => (...args) => {
+        let handlersObj = {}, attrsObj = {}, children = [];
+        let autoNotifyMap = {};
 
-        // Remove old props
-        for (let k in oldVNode.props) {
-            if (!(k in newVNode.props)) {
-                if (k.startsWith("on")) {
-                    const eventName = k.slice(2).toLowerCase();
-                    el.removeEventListener(eventName, oldVNode.props[k]);
-                } else if (k === "className") {
-                    el.removeAttribute("class");
-                } else if (k === "style") {
-                    el.removeAttribute("style");
+        for (const arg of args) {
+            if (!arg && arg !== 0) continue;
+            if (arg instanceof Handler) {
+                handlersObj[arg.event] = arg.fn;
+                autoNotifyMap[arg.event] = arg.autoNotify;
+            }
+            else if (arg instanceof Attr) {
+                // Concatenate multiple attrs with same key
+                if (attrsObj[arg.key]) {
+                    attrsObj[arg.key] = attrsObj[arg.key] + " " + arg.value;
                 } else {
-                    el.removeAttribute(k);
+                    attrsObj[arg.key] = arg.value;
                 }
             }
+            else children.push(arg);
         }
 
-        // Update props
-        for (let [k, v] of Object.entries(newVNode.props)) {
-            if (k.startsWith("on") && typeof v === "function") {
-                if (oldVNode.props[k] !== v) {
-                    const eventName = k.slice(2).toLowerCase();
-                    if (oldVNode.props[k]) {
-                        el.removeEventListener(eventName, oldVNode.props[k]);
-                    }
-                    el.addEventListener(eventName, v);
-                }
-                continue;
-            }
+        const vnode = new VNode(tag, handlersObj, attrsObj, ...children);
+        vnode._autoNotifyMap = autoNotifyMap;
+        return vnode;
+    }
+});
 
-            if (k === "className") {
-                if (oldVNode.props[k] !== v) {
-                    el.setAttribute("class", v);
-                }
-                continue;
-            }
+function create(vnode, notify = null) {
+    if (vnode == null) return document.createTextNode("");
 
-            if (k === "style" && typeof v === "object") {
-                if (JSON.stringify(oldVNode.props[k]) !== JSON.stringify(v)) {
-                    Object.assign(el.style, v);
-                }
-                continue;
-            }
-
-            if (v === true) {
-                el.setAttribute(k, "");
-            } else if (v === false || v == null) {
-                el.removeAttribute(k);
-            } else if (oldVNode.props[k] !== v) {
-                if (k in el && k !== 'list' && k !== 'form') {
-                    el[k] = v;
-                } else {
-                    el.setAttribute(k, v);
-                }
-            }
-        }
-
-        patchChildren(el, oldVNode.children, newVNode.children);
+    if (vnode instanceof VText) {
+        const textNode = document.createTextNode(vnode.text);
+        vnode.el = textNode;
+        return textNode;
     }
 
-    // Render function
-    function render(vnodeOrFunction, container) {
-        if (typeof container === 'string') {
-            container = document.querySelector(container);
-        }
+    vnode._notify = notify;
 
-        if (!container) {
-            throw new Error('Container not found');
-        }
+    const el = document.createElement(vnode.tag);
 
-        rootElement = container;
-
-        if (typeof vnodeOrFunction === 'function') {
-            renderFunction = vnodeOrFunction;
-        } else {
-            renderFunction = () => vnodeOrFunction;
-        }
-
-        const vnode = renderFunction();
-
-        if (!currentVTree) {
-            container.innerHTML = '';
-            container.appendChild(vnode.node());
-        } else {
-            patch(currentVTree, vnode, container);
-        }
-
-        currentVTree = vnode;
+    for (const [k, v] of Object.entries(vnode.attrs || {})) {
+        if (v === true) el.setAttribute(k, "");
+        else if (v === false || v == null) continue;
+        else el.setAttribute(k, v);
     }
 
-    // Notify function to trigger re-render
-    function notify() {
-        if (renderFunction && rootElement) {
-            const newVTree = renderFunction();
-            patch(currentVTree, newVTree, rootElement);
-            currentVTree = newVTree;
-        }
-    }
-
-    // Helper to wrap event handlers with auto-notify
-    function wrapEventHandler(handler, shouldNotify = true) {
-        return function (...args) {
-            const result = handler.apply(this, args);
-            if (shouldNotify !== false) {
+    vnode._boundHandlers = {};
+    for (const [event, handler] of Object.entries(vnode.handlers || {})) {
+        const autoNotify = vnode._autoNotifyMap?.[event] !== false;
+        const wrappedHandler = (...args) => {
+            handler(...args);
+            if (autoNotify && notify) {
                 notify();
             }
-            return result;
         };
+        vnode._boundHandlers[event] = wrappedHandler;
+        el.addEventListener(event, wrappedHandler);
     }
 
-    const attrsProxy = new Proxy({}, {
-        get(target, prop) {
-            return (...values) => {
-                if (values.length === 0) return { [prop]: true };
-                if (values.length === 1) {
-                    if (Array.isArray(values[0]) && values[0].raw) {
-                        return { [prop]: values[0][0] };
-                    }
-                    return { [prop]: values[0] };
-                }
-                return { [prop]: values.join(' ') };
-            };
-        }
-    });
-
-    // Events creators
-    const eventsProxy = new Proxy({}, {
-        get(target, prop) {
-            if (!prop.startsWith('on')) return undefined;
-
-            return (handler, autoNotify) => {
-                const shouldNotify = autoNotify !== false;
-                return { [prop]: wrapEventHandler(handler, shouldNotify) };
-            };
-        }
-    });
-
-    // CSS creators
-    const cssProxy = new Proxy({}, {
-        get(target, prop) {
-            return (strings, ...values) => {
-                if (Array.isArray(strings) && strings.raw) {
-                    return { [prop]: strings[0] };
-                }
-                return { [prop]: strings };
-            };
-        }
-    });
-
-    // Style function to combine multiple CSS properties
-    function style(...cssProps) {
-        const combined = {};
-        cssProps.forEach(prop => {
-            Object.assign(combined, prop);
-        });
-        return { style: combined };
+    for (const c of vnode.children || []) {
+        el.appendChild(create(c, notify));
     }
 
-    // Merge props intelligently
-    function mergeProps(target, source) {
-        for (const key in source) {
-            if (key === 'className' && target.className) {
-                target.className = target.className + ' ' + source.className;
-            } else if (key === 'style' && typeof target.style === 'object' && typeof source.style === 'object') {
-                target.style = { ...target.style, ...source.style };
-            } else {
-                target[key] = source[key];
+    vnode.el = el;
+    return el;
+}
+
+function cleanup(vnode) {
+    if (vnode._boundHandlers && vnode.el) {
+        for (const [event, handler] of Object.entries(vnode._boundHandlers)) {
+            vnode.el.removeEventListener(event, handler);
+        }
+    }
+    if (vnode.children) {
+        for (const child of vnode.children) {
+            if (child instanceof VNode) {
+                cleanup(child);
             }
         }
     }
+}
 
-    // Tags creator using Proxy
-    const tagsProxy = new Proxy({}, {
-        get(target, tag) {
-            return (...args) => {
-                const props = {};
-                const children = [];
+function patchChildren(parent, oldChildren, newChildren, notify) {
+    const len = Math.max(oldChildren.length, newChildren.length);
 
-                args.forEach(arg => {
-                    if (arg === null || arg === undefined) return;
+    for (let i = 0; i < len; i++) {
+        const oldC = oldChildren[i];
+        const newC = newChildren[i];
 
-                    if (typeof arg === 'object' && !Array.isArray(arg) && !(arg instanceof VNode) && !(arg instanceof TextVNode)) {
-                        mergeProps(props, arg);
-                    } else {
-                        children.push(arg);
-                    }
-                });
-
-                return new VNode(tag, props, children);
-            };
+        if (!oldC && newC) {
+            parent.appendChild(create(newC, notify));
+            continue;
         }
-    });
 
-    window.erg0 = {
-        VNode,
-        TextVNode,
-        tags: tagsProxy,
-        attrs: attrsProxy,
-        events: eventsProxy,
-        css: cssProxy,
-        style: style,
-        render: render,
-        notify: notify
-    };
-})();
+        if (oldC && !newC) {
+            if (oldC instanceof VNode) {
+                cleanup(oldC);
+            }
+            parent.removeChild(oldC.el);
+            continue;
+        }
+
+        if (oldC instanceof VText && newC instanceof VText) {
+            if (oldC.text !== newC.text) oldC.el.nodeValue = newC.text;
+            newC.el = oldC.el;
+            continue;
+        }
+
+        if ((oldC instanceof VText && newC instanceof VNode) ||
+            (oldC instanceof VNode && newC instanceof VText)) {
+            if (oldC instanceof VNode) cleanup(oldC);
+            parent.replaceChild(create(newC, notify), oldC.el);
+            continue;
+        }
+
+        if (oldC instanceof VNode && newC instanceof VNode) {
+            patch(oldC, newC, parent, notify);
+        }
+    }
+}
+
+function patch(oldVNode, newVNode, parent, notify) {
+    if (oldVNode.tag !== newVNode.tag) {
+        cleanup(oldVNode);
+        parent.replaceChild(create(newVNode, notify), oldVNode.el);
+        return;
+    }
+
+    const el = (newVNode.el = oldVNode.el);
+    newVNode._notify = notify;
+    newVNode._autoNotifyMap = newVNode._autoNotifyMap || {};
+
+    for (const k in oldVNode.attrs) {
+        if (!(k in newVNode.attrs)) {
+            el.removeAttribute(k);
+        }
+    }
+
+    for (const [k, v] of Object.entries(newVNode.attrs)) {
+        if (v === true) el.setAttribute(k, "");
+        else if (v === false || v == null) el.removeAttribute(k);
+        else if (oldVNode.attrs[k] !== v) el.setAttribute(k, v);
+    }
+
+    const oldHandlers = oldVNode._boundHandlers || {};
+    const newHandlers = newVNode.handlers || {};
+    newVNode._boundHandlers = {};
+
+    for (const event in oldHandlers) {
+        if (!(event in newHandlers)) {
+            el.removeEventListener(event, oldHandlers[event]);
+        }
+    }
+
+    for (const [event, handler] of Object.entries(newHandlers)) {
+        if (oldHandlers[event]) {
+            el.removeEventListener(event, oldHandlers[event]);
+        }
+        const autoNotify = newVNode._autoNotifyMap?.[event] !== false;
+        const wrappedHandler = (...args) => {
+            handler(...args);
+            if (autoNotify && notify) {
+                notify();
+            }
+        };
+        el.addEventListener(event, wrappedHandler);
+        newVNode._boundHandlers[event] = wrappedHandler;
+    }
+
+    patchChildren(el, oldVNode.children, newVNode.children, notify);
+}
+
+function render(container, view) {
+    // Create a wrapper VNode that represents empty container
+    let currentVNode = new VNode('div'); // dummy tag, won't be used
+    currentVNode.children = [];
+    currentVNode.el = container;
+
+    function notify() {
+        const newVNode = view();
+        const wrapperVNode = new VNode('div');
+        wrapperVNode.children = [newVNode];
+        wrapperVNode.el = container;
+
+        patchChildren(container, currentVNode.children, wrapperVNode.children, notify);
+        currentVNode = wrapperVNode;
+    }
+
+    notify();
+    return notify;
+}

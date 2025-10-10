@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VNode Engine Tests</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+            background: #f5f5f5;
+        }
+
+        .test-section {
+            background: white;
+            border: 2px solid #333;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .test-section h2 {
+            margin-top: 0;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+        }
+
+        .test-output {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px 0;
+            background: #fafafa;
+            min-height: 50px;
+        }
+
+        button {
+            padding: 8px 16px;
+            margin: 4px;
+            cursor: pointer;
+            border: 2px solid #333;
+            background: white;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background: #f0f0f0;
+        }
+
+        .pass {
+            color: green;
+            font-weight: bold;
+        }
+
+        .fail {
+            color: red;
+            font-weight: bold;
+        }
+
+        .info {
+            color: blue;
+        }
+
+        .item {
+            padding: 8px;
+            margin: 4px 0;
+            background: #e0e0e0;
+            border-radius: 4px;
+        }
+
+        code {
+            background: #eee;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-left: 10px;
+        }
+
+        .status.manual {
+            background: #ffffcc;
+        }
+
+        .status.auto {
+            background: #ccffcc;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🧪 VNode Engine Test Suite</h1>
+
+    <!-- Test 1: Auto vs Manual Notify -->
+    <div class="test-section">
+        <h2>Test 1: Auto vs Manual Notify</h2>
+        <p>Testing that handlers auto-notify by default, but can be disabled with <code>false</code></p>
+        <div id="test1" class="test-output"></div>
+    </div>
+
+    <!-- Test 2: Node Arrays -->
+    <div class="test-section">
+        <h2>Test 2: Node Arrays</h2>
+        <p>Testing that arrays of VNodes render correctly</p>
+        <div id="test2" class="test-output"></div>
+    </div>
+
+    <!-- Test 3: Multiple Attrs -->
+    <div class="test-section">
+        <h2>Test 3: Multiple Attrs Concatenation</h2>
+        <p>Testing that multiple attrs with same key are concatenated</p>
+        <div id="test3" class="test-output"></div>
+    </div>
+
+    <!-- Test 4: Destructuring Syntax -->
+    <div class="test-section">
+        <h2>Test 4: Destructuring Syntax</h2>
+        <p>Testing <code>const {div, button} = tags</code> style syntax</p>
+        <div id="test4" class="test-output"></div>
+    </div>
+
+    <!-- Test 5: Multiple Trees -->
+    <div class="test-section">
+        <h2>Test 5: Multiple Independent Trees</h2>
+        <p>Testing that multiple render() calls create independent trees with separate notify functions</p>
+        <div style="display: flex; gap: 20px;">
+            <div id="test5a" class="test-output" style="flex: 1;"></div>
+            <div id="test5b" class="test-output" style="flex: 1;"></div>
+        </div>
+    </div>
+
+    <!-- Test 6: Dynamic Children -->
+    <div class="test-section">
+        <h2>Test 6: Dynamic Children (Add/Remove)</h2>
+        <p>Testing that children can be added and removed dynamically</p>
+        <div id="test6" class="test-output"></div>
+    </div>
+
+    <!-- Test 7: Nested Arrays -->
+    <div class="test-section">
+        <h2>Test 7: Nested Arrays</h2>
+        <p>Testing deeply nested arrays of nodes</p>
+        <div id="test7" class="test-output"></div>
+    </div>
+
+    <!-- Test 8: Event Cleanup -->
+    <div class="test-section">
+        <h2>Test 8: Event Listener Cleanup</h2>
+        <p>Testing that old event listeners are properly removed</p>
+        <div id="test8" class="test-output"></div>
+        <div class="info">Check console for listener count (should not grow unbounded)</div>
+    </div>
+
+    <!-- Test 9: VText ↔ VNode Transitions -->
+    <div class="test-section">
+        <h2>Test 9: VText ↔ VNode Transitions</h2>
+        <p>Testing that text nodes can be replaced with element nodes and vice versa</p>
+        <div id="test9" class="test-output"></div>
+    </div>
+
+    <!-- Test 10: Boolean Attributes -->
+    <div class="test-section">
+        <h2>Test 10: Boolean Attributes</h2>
+        <p>Testing that empty attribute values create boolean attributes (e.g., <code>disabled</code>,
+            <code>checked</code>)
+        </p>
+        <div id="test10" class="test-output"></div>
+    </div>
+
+    <script src="../erg0.js"></script>
+
+    <script>
+        // Destructure everything upfront - this is the recommended style!
+        const { div, button, h3, span, p, ul, li } = tags;
+        const { onclick } = handlers;
+        const { class: c, id, style, title } = attrs;
+
+        // ============================================================================
+        // TEST 1: Auto vs Manual Notify
+        // ============================================================================
+        {
+            let state1 = {
+                autoCount: 0,
+                manualCount: 0
+            };
+
+            function Test1() {
+                return div(
+                    h3("Auto vs Manual Notify"),
+                    div("Auto-notify count: ", span(c`pass`, state1.autoCount)),
+                    button(
+                        onclick(() => state1.autoCount++), // auto-notify by default
+                        "Auto Increment"
+                    ),
+                    div("Manual-notify count: ", span(c`info`, state1.manualCount)),
+                    button(
+                        onclick((e) => {
+                            state1.manualCount++;
+                            notify1(); // must call manually
+                        }, false), // disable auto-notify
+                        "Manual Increment"
+                    )
+                );
+            }
+
+            const notify1 = render(document.getElementById("test1"), Test1);
+        }
+
+        // ============================================================================
+        // TEST 2: Node Arrays
+        // ============================================================================
+        {
+            let state2 = {
+                items: ["First", "Second", "Third"]
+            };
+
+            function Test2() {
+                return div(
+                    h3("Node Arrays"),
+                    div(
+                        // Array of nodes passed as children
+                        state2.items.map((item, i) =>
+                            div(c`item`, `${i + 1}. ${item}`)
+                        )
+                    ),
+                    button(
+                        onclick(() => {
+                            state2.items.push(`Item ${state2.items.length + 1}`);
+                        }),
+                        "Add Item"
+                    ),
+                    button(
+                        onclick(() => {
+                            state2.items.pop();
+                        }),
+                        "Remove Last"
+                    )
+                );
+            }
+
+            render(document.getElementById("test2"), Test2);
+        }
+
+        // ============================================================================
+        // TEST 3: Multiple Attrs Concatenation
+        // ============================================================================
+        {
+            let state3 = { variant: "primary" };
+
+            function Test3() {
+                return div(
+                    h3("Multiple Attrs"),
+                    div(
+                        // Multiple class attributes should concatenate
+                        c`item`,
+                        c`test-item`,
+                        c`${state3.variant}`,
+                        style`padding: 20px; border: 2px solid #333;`,
+                        `Classes: item test-item ${state3.variant}`
+                    ),
+                    button(
+                        onclick(() => {
+                            state3.variant = state3.variant === "primary" ? "secondary" : "primary";
+                        }),
+                        "Toggle Variant"
+                    ),
+                    p(c`info`, "Check element classes in DevTools")
+                );
+            }
+
+            render(document.getElementById("test3"), Test3);
+        }
+
+        // ============================================================================
+        // TEST 4: Destructuring Syntax Demo
+        // ============================================================================
+        {
+            // Already destructured at the top!
+            let state4 = { message: "Destructuring works!" };
+
+            function Test4() {
+                return div(
+                    h3("Destructuring Syntax"),
+                    p(c`pass`, state4.message),
+                    p(
+                        "Using: ",
+                        span(c`info`, "const { div, button } = tags"),
+                        " and ",
+                        span(c`info`, "const { onclick } = handlers")
+                    ),
+                    button(
+                        onclick(() => {
+                            state4.message = "Still working at " + new Date().toLocaleTimeString();
+                        }),
+                        "Update Message"
+                    )
+                );
+            }
+
+            render(document.getElementById("test4"), Test4);
+        }
+
+        // ============================================================================
+        // TEST 5: Multiple Independent Trees
+        // ============================================================================
+        {
+            let stateA = { count: 0 };
+            let stateB = { count: 100 };
+
+            function TreeA() {
+                return div(
+                    h3("Tree A"),
+                    div(c`pass`, `Count: ${stateA.count}`),
+                    button(
+                        onclick(() => stateA.count++),
+                        "Increment A"
+                    )
+                );
+            }
+
+            function TreeB() {
+                return div(
+                    h3("Tree B"),
+                    div(c`info`, `Count: ${stateB.count}`),
+                    button(
+                        onclick(() => stateB.count--),
+                        "Decrement B"
+                    )
+                );
+            }
+
+            render(document.getElementById("test5a"), TreeA);
+            render(document.getElementById("test5b"), TreeB);
+        }
+
+        // ============================================================================
+        // TEST 6: Dynamic Children
+        // ============================================================================
+        {
+            let state6 = {
+                items: ["Apple", "Banana"],
+                newItem: ""
+            };
+
+            function Test6() {
+                return div(
+                    h3("Dynamic Children"),
+                    div(
+                        state6.items.map((item, i) =>
+                            div(
+                                c`item`,
+                                span(`${item} `),
+                                button(
+                                    onclick(() => {
+                                        state6.items = state6.items.filter((_, idx) => idx !== i);
+                                    }),
+                                    "✕"
+                                )
+                            )
+                        )
+                    ),
+                    button(
+                        onclick(() => {
+                            const item = prompt("Enter item name:");
+                            if (item) state6.items.push(item);
+                        }),
+                        "Add Item"
+                    )
+                );
+            }
+
+            render(document.getElementById("test6"), Test6);
+        }
+
+        // ============================================================================
+        // TEST 7: Nested Arrays
+        // ============================================================================
+        {
+            let state7 = {
+                groups: [
+                    { name: "Group A", items: ["A1", "A2"] },
+                    { name: "Group B", items: ["B1", "B2", "B3"] }
+                ]
+            };
+
+            function Test7() {
+                return div(
+                    h3("Nested Arrays"),
+                    // Nested arrays of arrays
+                    state7.groups.map(group =>
+                        div(
+                            c`item`,
+                            div(span(c`pass`, group.name)),
+                            ul(
+                                group.items.map(item =>
+                                    li(item)
+                                )
+                            )
+                        )
+                    ),
+                    button(
+                        onclick(() => {
+                            state7.groups[0].items.push(`A${state7.groups[0].items.length + 1}`);
+                        }),
+                        "Add to Group A"
+                    )
+                );
+            }
+
+            render(document.getElementById("test7"), Test7);
+        }
+
+        // ============================================================================
+        // TEST 8: Event Cleanup
+        // ============================================================================
+        {
+            let state8 = {
+                renderCount: 0,
+                mode: "button"
+            };
+
+            let listenerCount = 0;
+            const originalAddEventListener = Element.prototype.addEventListener;
+            const originalRemoveEventListener = Element.prototype.removeEventListener;
+
+            Element.prototype.addEventListener = function (...args) {
+                listenerCount++;
+                return originalAddEventListener.apply(this, args);
+            };
+
+            Element.prototype.removeEventListener = function (...args) {
+                listenerCount--;
+                return originalRemoveEventListener.apply(this, args);
+            };
+
+            function Test8() {
+                state8.renderCount++;
+                return div(
+                    h3("Event Cleanup Test"),
+                    p(`Renders: ${state8.renderCount}`),
+                    p(c`info`, `Active listeners: ${listenerCount}`),
+                    state8.mode === "button"
+                        ? button(onclick(() => state8.mode = "div"), "Switch to Div")
+                        : div(
+                            c`item`,
+                            onclick(() => state8.mode = "button"),
+                            "Click to Switch Back"
+                        ),
+                    button(
+                        onclick(() => { }),
+                        "Force Re-render"
+                    ),
+                    p(c`info`, "Listener count should stay stable")
+                );
+            }
+
+            render(document.getElementById("test8"), Test8);
+        }
+
+        // ============================================================================
+        // TEST 9: VText ↔ VNode Transitions
+        // ============================================================================
+        {
+            let state9 = {
+                mode: "text", // "text" | "node"
+                counter: 0
+            };
+
+            function Test9() {
+                state9.counter++;
+
+                return div(
+                    h3("VText ↔ VNode Transitions"),
+                    p(`Render #${state9.counter}`),
+                    div(
+                        c`test-output`,
+                        style`border: 2px dashed #999; padding: 15px; min-height: 60px;`,
+                        // This is the critical part - sometimes text, sometimes node
+                        state9.mode === "text"
+                            ? "Just plain text here"
+                            : div(c`item`, "This is a div node")
+                    ),
+                    button(
+                        onclick(() => {
+                            state9.mode = state9.mode === "text" ? "node" : "text";
+                        }),
+                        `Switch to ${state9.mode === "text" ? "VNode" : "VText"}`
+                    ),
+                    p(c`info`, `Current: ${state9.mode === "text" ? "VText (plain text)" : "VNode (div element)"}`)
+                );
+            }
+
+            render(document.getElementById("test9"), Test9);
+        }
+
+        // ============================================================================
+        // TEST 10: Boolean Attributes
+        // ============================================================================
+        {
+            let state10 = {
+                isDisabled: true,
+                isChecked: false,
+                customData: true
+            };
+
+            function Test10() {
+                const { disabled, checked } = attrs;
+
+                return div(
+                    h3("Boolean Attributes"),
+                    p("Boolean attributes are created when you pass empty template literals:"),
+
+                    div(c`item`, style`margin: 10px 0;`,
+                        button(
+                            state10.isDisabled ? disabled`` : null,
+                            onclick(() => alert("Clicked!")),
+                            "Button (toggleable disabled)"
+                        ),
+                        button(
+                            onclick(() => state10.isDisabled = !state10.isDisabled),
+                            state10.isDisabled ? "Enable" : "Disable"
+                        )
+                    ),
+
+                    div(c`item`, style`margin: 10px 0;`,
+                        "Checkbox: ",
+                        // Note: checked attribute in HTML doesn't control the checked state after user interaction
+                        // This is just to show the attribute is created
+                        tags.input(
+                            attrs.type`checkbox`,
+                            state10.isChecked ? checked`` : null,
+                            id`test-checkbox`
+                        ),
+                        tags.label(
+                            attrs.for`test-checkbox`,
+                            " Check me"
+                        ),
+                        button(
+                            onclick(() => state10.isChecked = !state10.isChecked),
+                            "Toggle checked attr"
+                        )
+                    ),
+
+                    div(c`item`, style`margin: 10px 0;`,
+                        "Custom data attribute: ",
+                        span(
+                            state10.customData ? attrs.data`` : null,
+                            style`background: yellow; padding: 4px;`,
+                            "Inspect me in DevTools"
+                        ),
+                        button(
+                            onclick(() => state10.customData = !state10.customData),
+                            "Toggle data attr"
+                        )
+                    ),
+
+                    p(c`info`, "Check elements in DevTools to see boolean attributes like ",
+                        tags.code("disabled"), " or ", tags.code("data"))
+                );
+            }
+
+            render(document.getElementById("test10"), Test10);
+        }
+
+        console.log("✅ All tests initialized!");
+    </script>
+</body>
+
+</html>
